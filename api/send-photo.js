@@ -1,7 +1,6 @@
 /**
  * Serverless-функция отправки медиа (фото или видео) пользователю в Telegram
  * Файл: api/send-photo.js
- * Добавлена интерактивная кнопка-ссылка под медиафайлом
  */
 
 module.exports = async function handler(req, res) {
@@ -10,9 +9,10 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
+  // Поддержка обоих названий токена
   const botToken = process.env.BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken) {
-    return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN missing in environment variables' });
+    return res.status(500).json({ error: 'BOT_TOKEN missing in environment variables' });
   }
 
   const { video, image, photo, type, mimeType, userId, chatId, caption } = req.body || {};
@@ -24,7 +24,7 @@ module.exports = async function handler(req, res) {
 
   const isVideo = type === 'video' || Boolean(video);
 
-  // Вирусная инлайн-кнопка для запуска Mini App (сохраняется даже при пересылке друзьям)
+  // Вирусная инлайн-кнопка под сообщением для мгновенного входа в Mini App
   const inlineKeyboard = JSON.stringify({
     inline_keyboard: [
       [
@@ -37,9 +37,7 @@ module.exports = async function handler(req, res) {
   });
 
   try {
-    // =============================================================
     // 1. ОТПРАВКА ВИДЕО (MP4 / WebM)
-    // =============================================================
     if (isVideo && video) {
       const base64Data = video.replace(/^data:[^;]+;base64,/, '');
       const videoBuffer = Buffer.from(base64Data, 'base64');
@@ -62,7 +60,7 @@ module.exports = async function handler(req, res) {
 
       let result = await tgResponse.json();
 
-      // Фоллбэк: если Telegram отверг кодек sendVideo, шлём документом
+      // Фоллбэк: если кодек не подошел для sendVideo — шлем надежным sendDocument
       if (!result.ok && result.error_code !== 403) {
         console.warn('[send-photo] sendVideo error, fallback to sendDocument:', result.description);
         const docFormData = new FormData();
@@ -99,9 +97,7 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // =============================================================
     // 2. ОТПРАВКА ФОТО (PNG / JPEG)
-    // =============================================================
     if (image || photo) {
       const base64Data = (image || photo).replace(/^data:image\/\w+;base64,/, '');
       const photoBuffer = Buffer.from(base64Data, 'base64');
