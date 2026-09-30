@@ -943,3 +943,53 @@ button.calc-btn:active { transform: scale(0.98); }
   visibility: visible;
   transform: translateY(0);
 }
+
+
+/* ==========================================================================
+   КРЕАТИВНОЕ КАСКАДНОЕ ПОЯВЛЕНИЕ РЕЗУЛЬТАТОВ (БЕЗ ЗВУКА)
+   ========================================================================== */
+
+/* Блок результатов плавно сглаживает появление */
+.results.is-revealing {
+  display: block !important;
+  opacity: 1;
+}
+
+/* Все вложенные блоки (цифра, бейдж, шкала, строки) изначально скрыты */
+.results.is-revealing > * {
+  opacity: 0;
+  transform: translateY(16px) scale(0.98);
+  animation: resultCascadeIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Поочередная задержка вылета каждого элемента (stagger effect) */
+.results.is-revealing > *:nth-child(1) { animation-delay: 0.05s; } /* Главная цифра */
+.results.is-revealing > *:nth-child(2) { animation-delay: 0.15s; } /* Статус-бейдж */
+.results.is-revealing > *:nth-child(3) { animation-delay: 0.25s; } /* Шкала / БЖУ */
+.results.is-revealing > *:nth-child(4) { animation-delay: 0.35s; } /* Строки данных */
+.results.is-revealing > *:nth-child(5) { animation-delay: 0.45s; } /* Кнопка Stories */
+.results.is-revealing > *:nth-child(n+6) { animation-delay: 0.55s; }
+
+@keyframes resultCascadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* Мягкая подсветка цифры в момент проявления */
+.results.is-revealing .result-hero-num {
+  animation: glowPop 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes glowPop {
+  0% { transform: scale(0.9); opacity: 0; }
+  60% { transform: scale(1.04); }
+  100% { transform: scale(1); opacity: 1; }
+}
