@@ -1,49 +1,56 @@
 /**
  * ГЛАВНАЯ ТОЧКА ВХОДА ПРИЛОЖЕНИЯ (Vanilla JS)
  * Файл: src/main.js
- * Включает автоскролл к кнопке «Назад» и каскадное появление результатов тестов
+ * С идеальным таймингом скролла и адаптивным запуском Mini App
  */
 
 (function () {
   'use strict';
 
   var tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+  const BOT_USERNAME = 'zoj_tl_bot';
 
   // -------------------------------------------------------------
-  // 1. СТИЛИ КАСКАДНОЙ АНИМАЦИИ ВЫДАЧИ РЕЗУЛЬТАТОВ (БЕЗ ЗВУКА)
+  // 1. СТИЛИ КАСКАДНОЙ АНИМАЦИИ (ПОЯВЛЯЮТСЯ ТОЛЬКО ПОСЛЕ СКРОЛЛА)
   // -------------------------------------------------------------
   function injectCascadeStyles() {
     if (document.getElementById('cascade-results-style')) return;
     var styleEl = document.createElement('style');
     styleEl.id = 'cascade-results-style';
     styleEl.textContent = `
-      /* Плавный контейнер результатов */
-      .cascade-reveal {
-        display: block !important;
-        opacity: 1 !important;
-        scroll-margin-top: 18px;
+      /* Начальное состояние ожидания скролла */
+      .results-waiting {
+        opacity: 0 !important;
+        visibility: hidden !important;
       }
 
-      /* Поочередное каскадное проявление дочерних блоков */
+      /* Активное каскадное появление */
+      .cascade-reveal {
+        opacity: 1 !important;
+        visibility: visible !important;
+        display: block !important;
+      }
+
+      /* Поочередный вылет блоков */
       .cascade-reveal > * {
         opacity: 0;
-        transform: translateY(16px) scale(0.98);
-        filter: blur(3px);
-        animation: resultCascadeItem 0.42s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        transform: translateY(22px) scale(0.97);
+        filter: blur(4px);
+        animation: resultCascadeItem 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
       }
 
-      .cascade-reveal > *:nth-child(1) { animation-delay: 0.04s; } /* Главная цифра */
-      .cascade-reveal > *:nth-child(2) { animation-delay: 0.14s; } /* Статус бейдж */
-      .cascade-reveal > *:nth-child(3) { animation-delay: 0.24s; } /* Шкала / БЖУ / график */
-      .cascade-reveal > *:nth-child(4) { animation-delay: 0.34s; } /* Строки параметров */
-      .cascade-reveal > *:nth-child(5) { animation-delay: 0.44s; } /* Кнопка Stories */
-      .cascade-reveal > *:nth-child(n+6) { animation-delay: 0.54s; }
+      .cascade-reveal > *:nth-child(1) { animation-delay: 0.08s; } /* Главная цифра */
+      .cascade-reveal > *:nth-child(2) { animation-delay: 0.22s; } /* Статус бейдж */
+      .cascade-reveal > *:nth-child(3) { animation-delay: 0.36s; } /* Шкала / БЖУ / График */
+      .cascade-reveal > *:nth-child(4) { animation-delay: 0.50s; } /* Строки параметров */
+      .cascade-reveal > *:nth-child(5) { animation-delay: 0.64s; } /* Кнопка Stories */
+      .cascade-reveal > *:nth-child(n+6) { animation-delay: 0.78s; }
 
       @keyframes resultCascadeItem {
         from {
           opacity: 0;
-          transform: translateY(18px) scale(0.97);
-          filter: blur(4px);
+          transform: translateY(22px) scale(0.96);
+          filter: blur(5px);
         }
         to {
           opacity: 1;
@@ -52,17 +59,17 @@
         }
       }
 
-      /* Мягкий акцент для числа */
+      /* Неоновый акцент на числе */
       .cascade-reveal .result-hero-num,
       .cascade-reveal .result-value,
       .cascade-reveal h2,
       .cascade-reveal .hero-val {
-        animation: glowPopNumber 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        animation: glowPopNumber 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
       }
 
       @keyframes glowPopNumber {
-        0% { transform: scale(0.92); opacity: 0; }
-        60% { transform: scale(1.04); }
+        0% { transform: scale(0.88); opacity: 0; }
+        65% { transform: scale(1.05); }
         100% { transform: scale(1); opacity: 1; }
       }
     `;
@@ -70,7 +77,7 @@
   }
 
   // -------------------------------------------------------------
-  // 2. УНИВЕРСАЛЬНЫЙ АВТОСКРОЛЛ К ШАПКЕ / КНОПКЕ «НАЗАД»
+  // 2. АВТОСКРОЛЛ К ШАПКЕ / КНОПКЕ «НАЗАД» ПРИ ВХОДЕ В ТЕСТ
   // -------------------------------------------------------------
   function scrollToScreenHeader(container) {
     if (!container) return;
@@ -81,8 +88,7 @@
 
       var rect = backBtn.getBoundingClientRect();
       var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-      // Оставляем комфортные 14px сверху экрана
-      var targetY = rect.top + scrollTop - 14;
+      var targetY = rect.top + scrollTop - 12;
 
       window.scrollTo({
         top: Math.max(0, targetY),
@@ -92,7 +98,7 @@
   }
 
   // -------------------------------------------------------------
-  // 3. ПЛАВНЫЙ СПУСК И ЗАПУСК КАСКАДА ДЛЯ РЕЗУЛЬТАТОВ
+  // 3. СНАЧАЛА СКРОЛЛ, ЗАТЕМ КАСКАД РЕЗУЛЬТАТОВ (БЕЗ СПЕШКИ)
   // -------------------------------------------------------------
   function showResultsWithCascade(resultsContainer) {
     var container = typeof resultsContainer === 'string'
@@ -101,28 +107,37 @@
 
     if (!container) return;
 
-    // Сброс и перезапуск каскада
+    // 1. Делаем контейнер видимым для верстки, но прозрачным для глаз
+    container.style.display = 'block';
     container.classList.remove('cascade-reveal');
-    void container.offsetWidth; // force reflow
-    container.classList.add('cascade-reveal');
+    container.classList.add('results-waiting');
 
-    if (window.haptic) {
-      window.haptic('success');
-    }
+    // 2. Запускаем мягкий спуск экрана вниз ровно к результатам
+    var rect = container.getBoundingClientRect();
+    var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    var targetScrollY = rect.top + scrollTop - 20;
 
-    // Мягкий спуск к карточке результата
+    window.scrollTo({
+      top: Math.max(0, targetScrollY),
+      behavior: 'smooth'
+    });
+
+    // 3. Задержка 350мс: скролл успевает доехать, и перед глазами раскрывается каскад
     setTimeout(function () {
-      container.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start'
-      });
-    }, 90);
+      container.classList.remove('results-waiting');
+      void container.offsetWidth; // force reflow
+      container.classList.add('cascade-reveal');
+
+      if (window.haptic) {
+        window.haptic('success');
+      }
+    }, 350);
   }
 
-  // Делегирование кликов по всем кнопкам «Рассчитать» / «Оценить»
+  // Перехват кликов по кнопкам «Рассчитать» / «Оценить»
   function initCalculateButtonInterceptor() {
     document.addEventListener('click', function (e) {
-      var btn = e.target.closest('button, .btn, .btn-primary, [type="submit"]');
+      var btn = e.target.closest('button, .btn, .btn-primary, .calc-btn, [type="submit"]');
       if (!btn) return;
 
       var txt = (btn.textContent || '').trim().toLowerCase();
@@ -130,7 +145,7 @@
                       txt.indexOf('оценить') !== -1 ||
                       txt.indexOf('расчет') !== -1 ||
                       txt.indexOf('завершить') !== -1 ||
-                      btn.classList.contains('btn-calc');
+                      btn.classList.contains('calc-btn');
 
       if (isCalcBtn) {
         var screen = btn.closest('.screen, .card, .calc-screen, .calculator-form, form') || 
@@ -141,13 +156,13 @@
           if (results) {
             showResultsWithCascade(results);
           }
-        }, 90);
+        }, 80);
       }
     });
   }
 
   // -------------------------------------------------------------
-  // 4. ТАКТИЛЬНОСТЬ, ТЕМЫ И КНОПКА НАВЕРХ
+  // 4. ТАКТИЛЬНОСТЬ, ТЕМЫ И КНОПКА «НАВЕРХ»
   // -------------------------------------------------------------
   function initHapticEngine() {
     window.haptic = function (type) {
@@ -226,7 +241,7 @@
   }
 
   // -------------------------------------------------------------
-  // 5. МЕНЕДЖЕР МОНТИРОВАНИЯ КАЛЬКУЛЯТОРОВ И ЙОГИ
+  // 5. МОНТИРОВАНИЕ КАЛЬКУЛЯТОРОВ И ЙОГИ
   // -------------------------------------------------------------
   var AppManager = {
     renderCalculator: function (testId, container) {
@@ -259,7 +274,7 @@
         window.initIcons(container);
       }
 
-      // ПЛАВНЫЙ СПУСК: Кнопка «Назад» встает строго под верхнюю границу экрана
+      // Доводка до кнопки «Назад»
       scrollToScreenHeader(container);
     },
 
@@ -325,7 +340,7 @@
         window.initIcons(container);
       }
 
-      // ПЛАВНЫЙ СПУСК: Кнопка «Назад» встает строго под верхнюю границу экрана
+      // Доводка до кнопки «Назад»
       scrollToScreenHeader(container);
     }
   };
@@ -334,8 +349,18 @@
   window.scrollToScreenHeader = scrollToScreenHeader;
   window.showResultsWithCascade = showResultsWithCascade;
 
+  // Адаптивное открытие калькулятора через Mini App (без ввода /start)
+  window.openMiniAppTest = function (testId) {
+    var deepLink = `https://t.me/${BOT_USERNAME}/app?startapp=${testId || 'calc'}`;
+    if (tg && typeof tg.openTelegramLink === 'function') {
+      tg.openTelegramLink(deepLink);
+    } else {
+      window.open(deepLink, '_blank');
+    }
+  };
+
   // -------------------------------------------------------------
-  // 6. СТАРТ ПРИЛОЖЕНИЯ
+  // 6. ИНИЦИАЛИЗАЦИЯ ЯДРА
   // -------------------------------------------------------------
   function initApp() {
     console.log('[Fizra & Yoga] Инициализация ядра...');
@@ -354,7 +379,6 @@
       window.telegramService.init();
     }
 
-    // Регистрация маршрутов в Router
     if (window.Router) {
       var zojTests = ['bmi', 'bmr', 'water', 'kerdo', 'stange', 'karvonen', 'rufier', 'romberg', 'kvas', 'sleep'];
       zojTests.forEach(function (id) {
