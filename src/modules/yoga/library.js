@@ -1,7 +1,7 @@
 /**
- * МОДУЛЬ ИНТЕРАКТИВНОЙ БИБЛИОТЕКИ ПЕРВОИСТОЧНИКОВ
+ * МОДУЛЬ ИНТЕРАКТИВНОЙ БИБЛИОТЕКИ ПЕРВОИСТОЧНИКОВ (Чистая Vanilla JS)
  * Файл: src/modules/yoga/library.js
- * Работает с данными из src/data/books-data.js
+ * Работает с данными из src/data/books-data.js и эндпоинтом /api/send-book
  */
 
 (function () {
@@ -10,63 +10,77 @@
   let activeCategory = 'all';
   let searchQuery = '';
 
-  // Резервный каталог на случай задержки загрузки books-data.js
+  // Резервный каталог с реальными ID книг на случай задержки загрузки books-data.js
   const FALLBACK_BOOKS = [
     {
-      id: 'hatha_pradipika',
-      title: 'Хатха Йога Прадипика',
+      id: 'hatha-yoga-pradipika-svatmarama',
+      title: 'Хатха-Йога Прадипика',
       author: 'Свами Сватмарама',
       category: 'yoga',
       categoryName: 'Классическая йога',
-      year: 'XV век',
-      pages: '148',
+      year: 'XV в.',
+      pages: '64',
       format: 'PDF',
-      fileSize: '4.2 МБ',
-      description: 'Фундаментальный канонический трактат хатха-йоги: асаны, очистительные крии (шаткармы), пранаяма, мудры, бандхи и самадхи.',
-      topics: ['4 ступени хатха-йоги', 'Отстройки базовых асан', 'Кумбхака и пранаяма', 'Пробуждение Кундалини'],
-      targetAudience: 'Для инструкторов и практикующих любого уровня'
+      fileSize: '0.4 МБ',
+      description: 'Классический средневековый санскритский трактат по хатха-йоге: 4 раздела (асаны, пранаямы, мудры и самадхи).',
+      topics: ['4 ступени хатха-йоги', 'Шесть очистительных действий (Шаткармы)', 'Пранаяма и контроль жизненной энергии', 'Самадхи'],
+      targetAudience: 'Практикующие любого уровня, преподаватели йоги'
     },
     {
-      id: 'yoga_sutras',
-      title: 'Йога-Сутры',
-      author: 'Махариши Патанджали',
-      category: 'yoga',
-      categoryName: 'Классическая йога',
-      year: 'II в. до н.э.',
-      pages: '112',
-      format: 'PDF',
-      fileSize: '2.8 МБ',
-      description: 'Основополагающий философский труд раджа-йоги. 196 афоризмов о контроле колебаний ума (читта-вритти-ниродха) и восьмеричном пути.',
-      topics: ['Яма и Нияма', 'Природа сознания', 'Препятствия в практике (клеши)', 'Самадхи'],
-      targetAudience: 'Для глубокого изучения философии и медитации'
-    },
-    {
-      id: 'gheranda_samhita',
-      title: 'Гхеранда Самхита',
-      author: 'Мудрец Гхеранда',
+      id: 'yoga-personal-hygiene-yogendra',
+      title: 'Йога. Личная гигиена',
+      author: 'Шри Йогендра',
       category: 'hygiene',
       categoryName: 'Гигиена и шаткармы',
-      year: 'XVII век',
-      pages: '136',
+      year: '1997',
+      pages: '224',
       format: 'PDF',
-      fileSize: '3.6 МБ',
-      description: 'Энциклопедия семичастной йоги (Сапта-садхана). Подробнейшие инструкции по выполнению 21 шаткармы и очищению внутренних органов.',
-      topics: ['Полный протокол шаткарм', '32 главные асаны', 'Мудры и пратьяхара', 'Питание йогина'],
-      targetAudience: 'Для освоения очистительных практик и терапевтической йоги'
+      fileSize: '41.9 МБ',
+      description: 'Фундаментальный труд основателя Институтов Йоги. Научный взгляд на деха-шуддхи (чистоту тела), шаткармы и автоиммунизацию.',
+      topics: ['Концепция Деха-шуддхи', 'Гигиена носоглотки и ротовой полости', 'Очищение ЖКТ', 'Психогигиена'],
+      targetAudience: 'Инструкторы хатха-йоги, специалисты по оздоровлению'
     },
     {
-      id: 'shiva_samhita',
-      title: 'Шива Самхита',
-      author: 'Неизвестный автор',
+      id: 'yoga-business-man-poltavtsev',
+      title: 'Йога делового человека',
+      author: 'Игорь Полтавцев',
       category: 'regulation',
       categoryName: 'Саморегуляция и стресс',
-      year: 'XVII век',
-      pages: '124',
+      year: '1991',
+      pages: '208',
       format: 'PDF',
-      fileSize: '3.1 МБ',
-      description: 'Трактат, объединяющий философию адвайта-веданты и тонкую анатомию: каналы нади, чакры, пранические ветра (вайю) и медитацию.',
-      topics: ['72 000 каналов нади', 'Анатомия 7 чакр', 'Микрокосм и макрокосм', 'Контроль праны'],
-      targetAudience: 'Для практикующих пранаяму и углубленную медитацию'
+      fileSize: '68.6 МБ',
+      description: 'Практическое руководство по психофизической саморегуляции, снятию стресса и раскрытию потенциала.',
+      topics: ['Экспресс-методы снятия стресса', 'Адаптивный комплекс асан', 'Пранаяма для умственной работы', 'Аутогенная тренировка'],
+      targetAudience: 'Специалисты, предприниматели, спортсмены при высоких нагрузках'
+    },
+    {
+      id: 'hatha-yoga-theos-bernard',
+      title: 'Хатха-йога',
+      author: 'Теос Бернард',
+      category: 'yoga',
+      categoryName: 'Классическая йога',
+      year: '2005',
+      pages: '160',
+      format: 'PDF',
+      fileSize: '4.3 МБ',
+      description: 'Документальный дневник американского исследователя о традиционном обучении йоге в Индии и Тибете.',
+      topics: ['Традиционное ученичество', 'Техника выполнения сложных шаткарм', 'Кумбхака и Бандхи', 'Анализ первоисточников'],
+      targetAudience: 'Опытные практики, исследователи традиций'
+    },
+    {
+      id: 'hatha-yoga-pradipika-satyananda',
+      title: 'Хатха-Йога Прадипика (с комментариями)',
+      author: 'Свами Сатьянанда Сарасвати',
+      category: 'yoga',
+      categoryName: 'Классическая йога',
+      year: '2017',
+      pages: '672',
+      format: 'PDF',
+      fileSize: '13.3 МБ',
+      description: 'Полный академический и тантрический комментарий Бихарской школы йоги к трактату Сватмарамы.',
+      topics: ['Построчный перевод шлок', 'Энергетическое воздействие асан', 'Пробуждение чакр и кундалини', 'Интеграция йоги в жизнь'],
+      targetAudience: 'Преподаватели йоги, йогатерапевты'
     }
   ];
 
@@ -75,175 +89,84 @@
     const styleEl = document.createElement('style');
     styleEl.id = 'library-standalone-styles';
     styleEl.textContent = `
-      .lib-search-wrap {
-        position: relative;
-        margin-bottom: 12px;
-      }
+      .lib-search-wrap { position: relative; margin-bottom: 12px; }
       .lib-search-input {
-        width: 100%;
-        padding: 12px 14px 12px 38px;
+        width: 100%; padding: 12px 14px 12px 38px;
         background: var(--bg-card, rgba(15, 23, 42, 0.75));
         border: 1px solid var(--border-card, rgba(192, 132, 252, 0.25));
-        border-radius: 14px;
-        color: var(--text-main, #f8fafc);
-        font-size: 14px;
-        font-family: inherit;
-        outline: none;
-        box-sizing: border-box;
+        border-radius: 14px; color: var(--text-main, #f8fafc);
+        font-size: 14px; font-family: inherit; outline: none; box-sizing: border-box;
       }
-      .lib-search-input:focus {
-        border-color: #c084fc;
-      }
+      .lib-search-input:focus { border-color: #c084fc; }
       .lib-search-icon {
-        position: absolute;
-        left: 12px;
-        top: 50%;
-        transform: translateY(-50%);
-        font-size: 15px;
-        pointer-events: none;
-        opacity: 0.7;
+        position: absolute; left: 12px; top: 50%;
+        transform: translateY(-50%); font-size: 15px; pointer-events: none; opacity: 0.7;
       }
-
       .lib-categories-bar {
-        display: flex;
-        gap: 8px;
-        overflow-x: auto;
-        padding-bottom: 10px;
-        margin-bottom: 14px;
-        scrollbar-width: none;
+        display: flex; gap: 8px; overflow-x: auto;
+        padding-bottom: 10px; margin-bottom: 14px; scrollbar-width: none;
       }
       .lib-categories-bar::-webkit-scrollbar { display: none; }
-
       .lib-cat-chip {
-        flex-shrink: 0;
-        padding: 7px 13px;
+        flex-shrink: 0; padding: 7px 13px;
         background: var(--bg-card, rgba(15, 23, 42, 0.75));
         border: 1px solid var(--border-card, rgba(192, 132, 252, 0.25));
-        border-radius: 20px;
-        color: var(--text-muted, #94a3b8);
-        font-size: 12.5px;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 0.2s ease;
+        border-radius: 20px; color: var(--text-muted, #94a3b8);
+        font-size: 12.5px; font-weight: 700; cursor: pointer; transition: all 0.2s ease;
       }
       .lib-cat-chip.active {
         background: rgba(192, 132, 252, 0.22);
-        border-color: #c084fc;
-        color: #ffffff;
+        border-color: #c084fc; color: #ffffff;
       }
-
       .lib-book-card {
         background: var(--bg-card, rgba(15, 23, 42, 0.75));
         border: 1px solid var(--border-card, rgba(192, 132, 252, 0.2));
-        border-radius: 16px;
-        padding: 16px;
-        margin-bottom: 12px;
-        box-sizing: border-box;
+        border-radius: 16px; padding: 16px; margin-bottom: 12px; box-sizing: border-box;
       }
-
       .lib-book-top {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 10px;
-        margin-bottom: 8px;
+        display: flex; align-items: flex-start; justify-content: space-between;
+        gap: 10px; margin-bottom: 8px;
       }
-      .lib-book-title {
-        font-size: 16px;
-        font-weight: 800;
-        color: #ffffff;
-        margin: 0 0 3px 0;
-      }
-      .lib-book-author {
-        font-size: 13px;
-        font-weight: 600;
-        color: #c084fc;
-      }
-
-      .lib-book-meta-chips {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        margin-bottom: 10px;
-      }
+      .lib-book-title { font-size: 16px; font-weight: 800; color: #ffffff; margin: 0 0 3px 0; }
+      .lib-book-author { font-size: 13px; font-weight: 600; color: #c084fc; }
+      .lib-book-meta-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
       .lib-meta-chip {
-        font-size: 11px;
-        font-weight: 700;
-        padding: 3px 8px;
-        border-radius: 8px;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 8px;
+        background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);
         color: var(--text-secondary, #cbd5e1);
       }
       .lib-meta-chip.badge-pdf {
-        background: rgba(239, 68, 68, 0.15);
-        border-color: rgba(239, 68, 68, 0.4);
-        color: #fca5a5;
+        background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.4); color: #fca5a5;
       }
-
-      .lib-book-desc {
-        font-size: 13px;
-        color: var(--text-secondary, #cbd5e1);
-        line-height: 1.45;
-        margin: 0 0 10px 0;
-      }
-
+      .lib-book-desc { font-size: 13px; color: var(--text-secondary, #cbd5e1); line-height: 1.45; margin: 0 0 10px 0; }
       .lib-topics-trigger {
-        font-size: 12.5px;
-        font-weight: 700;
-        color: #38bdf8;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        margin-bottom: 8px;
+        font-size: 12.5px; font-weight: 700; color: #38bdf8; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 4px; margin-bottom: 8px;
       }
       .lib-topics-box {
-        display: none;
-        background: rgba(0, 0, 0, 0.25);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 10px;
-        padding: 10px 12px;
-        margin-bottom: 10px;
+        display: none; background: rgba(0, 0, 0, 0.25);
+        border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 10px;
+        padding: 10px 12px; margin-bottom: 10px;
       }
       .lib-topics-box.open { display: block; }
-      .lib-topics-list {
-        padding-left: 18px;
-        margin: 0;
-        font-size: 12.5px;
-        line-height: 1.5;
-        color: var(--text-secondary, #cbd5e1);
-      }
-
+      .lib-topics-list { padding-left: 18px; margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--text-secondary, #cbd5e1); }
       .lib-audience-box {
-        font-size: 12px;
-        color: var(--text-muted, #94a3b8);
-        line-height: 1.4;
-        margin-bottom: 12px;
-        padding-top: 8px;
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        font-size: 12px; color: var(--text-muted, #94a3b8); line-height: 1.4;
+        margin-bottom: 12px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.08);
       }
       .lib-audience-box strong { color: var(--text-main, #f8fafc); }
-
       .lib-btn-download {
-        width: 100%;
-        padding: 11px 14px;
-        border-radius: 12px;
-        background: linear-gradient(135deg, rgba(192, 132, 252, 0.2) 0%, rgba(147, 51, 234, 0.25) 100%);
-        border: 1.5px solid rgba(192, 132, 252, 0.45);
-        color: #ffffff;
-        font-size: 13.5px;
-        font-weight: 800;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        transition: transform 0.15s ease;
+        width: 100%; padding: 12px 14px; border-radius: 12px;
+        background: linear-gradient(135deg, rgba(192, 132, 252, 0.22) 0%, rgba(147, 51, 234, 0.3) 100%);
+        border: 1.5px solid rgba(192, 132, 252, 0.5);
+        color: #ffffff; font-size: 13.5px; font-weight: 800; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; gap: 8px;
+        transition: transform 0.15s ease, background 0.2s ease;
       }
-      .lib-btn-download:active {
-        transform: scale(0.98);
+      .lib-btn-download:disabled {
+        opacity: 0.65; cursor: not-allowed;
       }
+      .lib-btn-download:active:not(:disabled) { transform: scale(0.98); }
     `;
     document.head.appendChild(styleEl);
   }
@@ -252,7 +175,8 @@
     const container = targetContainer || 
                       document.getElementById('yoga-tab-content') || 
                       document.getElementById('tab-library') || 
-                      document.getElementById('yoga-subview-container');
+                      document.getElementById('yoga-subview-container') ||
+                      document.getElementById('view-fizra-articles');
     if (!container) return;
 
     injectLibraryStyles();
@@ -270,17 +194,15 @@
           📚 Библиотека первоисточников
         </h2>
         <p style="font-size: 13px; color: var(--text-muted, #94a3b8); line-height: 1.45;">
-          Канонические трактаты с моментальной отправкой полных PDF-файлов ботом в Telegram
+          Канонические трактаты с моментальной отправкой полных PDF-файлов ботом в ваш Telegram-чат
         </p>
       </div>
 
-      <!-- Поисковая строка -->
       <div class="lib-search-wrap">
         <span class="lib-search-icon">🔍</span>
         <input type="text" id="lib-search-input" class="lib-search-input" placeholder="Поиск по названию, автору или теме..." value="${searchQuery}" />
       </div>
 
-      <!-- Фильтры категорий -->
       <div class="lib-categories-bar" id="lib-cat-bar">
         ${categories.map(cat => `
           <button type="button" class="lib-cat-chip ${cat.id === activeCategory ? 'active' : ''}" data-category="${cat.id}">
@@ -289,13 +211,11 @@
         `).join('')}
       </div>
 
-      <!-- Счетчик книг -->
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 0 2px;">
         <span style="font-size: 12px; color: var(--text-muted, #94a3b8);" id="lib-counter-label">Загрузка...</span>
         <span style="font-size: 12px; font-weight: 700; color: #c084fc;">PDF ботом в 1 клик</span>
       </div>
 
-      <!-- Список книг -->
       <div id="lib-books-list-container"></div>
     `;
 
@@ -372,7 +292,7 @@
           <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
           </svg>
-          <span>Получить книгу ботом (PDF)</span>
+          <span class="btn-label">Получить книгу ботом (PDF)</span>
         </button>
       </div>
     `).join('');
@@ -397,7 +317,7 @@
       filterAndRenderBooks(container);
     });
 
-    container.addEventListener('click', (e) => {
+    container.addEventListener('click', async (e) => {
       const trigger = e.target.closest('[data-trigger-topics]');
       if (trigger) {
         if (typeof window.haptic === 'function') window.haptic('light');
@@ -418,33 +338,105 @@
         const allBooks = (window.BOOKS_DATA && window.BOOKS_DATA.length > 0) ? window.BOOKS_DATA : FALLBACK_BOOKS;
         const found = allBooks.find(b => b.id === bookId);
         if (found) {
-          sendBookViaTelegram(found);
+          await sendBookViaApi(found, sendBtn);
         }
       }
     });
   }
 
-  function sendBookViaTelegram(book) {
+  /**
+   * Отправка книги через Serverless API (/api/send-book)
+   */
+  async function sendBookViaApi(book, btnEl) {
     if (typeof window.haptic === 'function') window.haptic('medium');
 
+    const tg = window.Telegram?.WebApp;
+    const userId = tg?.initDataUnsafe?.user?.id || null;
     const botUsername = 'zoj_tl_bot';
-    const deepLinkUrl = `https://t.me/${botUsername}?start=book_${book.id}`;
 
-    if (window.Telegram?.WebApp && typeof window.Telegram.WebApp.openTelegramLink === 'function') {
-      try {
-        window.Telegram.WebApp.openTelegramLink(deepLinkUrl);
-        return;
-      } catch (e) {}
+    const labelEl = btnEl.querySelector('.btn-label') || btnEl;
+    const origText = labelEl.textContent;
+    btnEl.disabled = true;
+    labelEl.textContent = '⏳ Отправка в диалог...';
+
+    // Если запущено не из Telegram
+    if (!userId) {
+      const deepLinkUrl = `https://t.me/${botUsername}?start=book_${book.id}`;
+      btnEl.disabled = false;
+      labelEl.textContent = origText;
+      if (tg?.openTelegramLink) {
+        tg.openTelegramLink(deepLinkUrl);
+      } else {
+        window.open(deepLinkUrl, '_blank');
+      }
+      return;
     }
 
-    if (window.tgService?.openLink) {
-      window.tgService.openLink(deepLinkUrl);
-    } else {
-      window.open(deepLinkUrl, '_blank');
+    try {
+      const res = await fetch('/api/send-book', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookId: book.id,
+          userId: userId,
+          chatId: userId
+        })
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        if (typeof window.haptic === 'function') window.haptic('notification', 'success');
+        labelEl.textContent = '✅ Отправлено в чат!';
+        
+        setTimeout(() => {
+          labelEl.textContent = origText;
+          btnEl.disabled = false;
+        }, 3000);
+
+        if (tg?.showAlert) {
+          tg.showAlert(`📖 Книга «${book.title}» успешно отправлена в ваш личный диалог с ботом @${botUsername}!`);
+        } else {
+          alert(`📖 Книга «${book.title}» успешно отправлена в ваш чат с ботом!`);
+        }
+        return;
+      }
+
+      // Если бот еще не активирован пользователем
+      if (res.status === 403 || data.error === 'bot_blocked_or_not_started') {
+        const msg = `Чтобы бот мог прислать вам PDF-файл, откройте диалог с ботом @${botUsername} и нажмите START. Перейти?`;
+        btnEl.disabled = false;
+        labelEl.textContent = origText;
+
+        if (tg?.showConfirm) {
+          tg.showConfirm(msg, (confirmed) => {
+            if (confirmed) {
+              tg.openTelegramLink(`https://t.me/${botUsername}?start=book_${book.id}`);
+            }
+          });
+        } else if (confirm(msg)) {
+          window.open(`https://t.me/${botUsername}?start=book_${book.id}`, '_blank');
+        }
+        return;
+      }
+
+      throw new Error(data.message || data.error || 'Ошибка отправки');
+
+    } catch (err) {
+      console.warn('[sendBookViaApi] Ошибка API, фоллбэк на ссылку:', err);
+      btnEl.disabled = false;
+      labelEl.textContent = origText;
+
+      const deepLinkUrl = `https://t.me/${botUsername}?start=book_${book.id}`;
+      if (tg?.openTelegramLink) {
+        tg.openTelegramLink(deepLinkUrl);
+      } else {
+        window.open(deepLinkUrl, '_blank');
+      }
     }
   }
 
-  // Экспорт под обоими именами для роутера и main.js
+  // Экспорт в глобальную область для роутера
   window.renderLibraryScreen = renderLibraryScreen;
   window.renderLibraryTab = renderLibraryScreen;
 })();
