@@ -1,6 +1,7 @@
 /**
  * Serverless-функция отправки медиа (фото или видео) пользователю в Telegram
  * Файл: api/send-photo.js
+ * Ссылка под медиафайлом адаптирована под прямой запуск Mini App без отправки "start"
  */
 
 module.exports = async function handler(req, res) {
@@ -9,7 +10,6 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  // Поддержка обоих названий токена
   const botToken = process.env.BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken) {
     return res.status(500).json({ error: 'BOT_TOKEN missing in environment variables' });
@@ -24,13 +24,13 @@ module.exports = async function handler(req, res) {
 
   const isVideo = type === 'video' || Boolean(video);
 
-  // Вирусная инлайн-кнопка под сообщением для мгновенного входа в Mini App
+  // АДАПТИВНАЯ КНОПКА: Открывает сразу само приложение (Mini App), а не чат с ботом
   const inlineKeyboard = JSON.stringify({
     inline_keyboard: [
       [
         {
-          text: '⚡ Проверить свои показатели',
-          url: 'https://t.me/zoj_tl_bot?start=calc'
+          text: '⚡ Открыть калькулятор',
+          url: 'https://t.me/zoj_tl_bot/app?startapp=calc'
         }
       ]
     ]
@@ -60,7 +60,7 @@ module.exports = async function handler(req, res) {
 
       let result = await tgResponse.json();
 
-      // Фоллбэк: если кодек не подошел для sendVideo — шлем надежным sendDocument
+      // Фоллбэк: если кодек видео не подошел для sendVideo — шлем через sendDocument
       if (!result.ok && result.error_code !== 403) {
         console.warn('[send-photo] sendVideo error, fallback to sendDocument:', result.description);
         const docFormData = new FormData();
