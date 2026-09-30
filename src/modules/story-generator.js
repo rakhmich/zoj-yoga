@@ -1,6 +1,6 @@
 /**
- * ЕДИНЫЙ КЛИЕНТСКИЙ МОДУЛЬ STORIES С АНИМАЦИЕЙ (8 СЕКУНД)
- * Файл: src/modules/story-generator.js
+ * ЕДИНЫЙ КЛИЕНТСКИЙ МОДУЛЬ STORIES С АНИМАЦИЕЙ (Чистая Vanilla JS)
+ * Файл: src/modules/story-generator.js (или story.js)
  */
 
 const BOT_USERNAME = 'zoj_tl_bot';
@@ -21,16 +21,12 @@ let storyState = {
   isBusy: false
 };
 
-// Тайминги: 2.6 сек на раскрытие + 5.4 сек на фиксацию (итого 8 секунд)
 const REVEAL_DURATION = 2600;
 const TOTAL_VIDEO_DURATION = 8000;
 
 let animStartTime = 0;
 let animFrameId = null;
 
-/**
- * Главная точка входа
- */
 function openStoryModal(arg1, arg2, arg3, arg4, arg5) {
   if (typeof arg1 === 'object' && arg1 !== null) {
     storyState.title = arg1.title || 'РЕЗУЛЬТАТ ТЕСТА';
@@ -102,16 +98,13 @@ function ensureStoryModalExists() {
     
     <div class="story-modal-box" id="story-box" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:94vw; max-width:420px; height:94vh; max-height:860px; background:#0b1120; border:1px solid rgba(255,255,255,0.12); border-radius:24px; box-shadow:0 24px 50px rgba(0,0,0,0.85); display:flex; flex-direction:column; padding:12px 14px; box-sizing:border-box; z-index:99999; overflow:hidden;">
       
-      <!-- 1. Компактный заголовок -->
       <div style="display:flex; justify-content:space-between; align-items:center; height:28px; margin-bottom:8px;">
         <span style="font-weight:800; font-size:14.5px; color:#f8fafc; letter-spacing:0.3px;">Публикация в Stories</span>
         <button type="button" onclick="closeStoryModal()" style="background:none; border:none; font-size:20px; color:#94a3b8; cursor:pointer; padding:0 4px; line-height:1;">✕</button>
       </div>
 
-      <!-- 2. Компактный бар настроек (высота всего ~64px) -->
       <div class="story-controls" style="display:flex; flex-direction:column; gap:6px; margin-bottom:6px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); padding:8px 10px; border-radius:14px;"></div>
 
-      <!-- 3. Область превью: занимает 100% оставшейся высоты без скролла -->
       <div class="story-preview-container" style="flex:1; min-height:0; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden;">
         <canvas id="story-canvas" width="1080" height="1920" style="max-height:100%; max-width:100%; aspect-ratio:9/16; object-fit:contain; border-radius:14px; box-shadow:0 8px 30px rgba(0,0,0,0.65); display:block;"></canvas>
         <img id="story-preview-img" alt="Предпросмотр" style="max-height:100%; max-width:100%; aspect-ratio:9/16; object-fit:contain; border-radius:14px; box-shadow:0 8px 30px rgba(0,0,0,0.65); display:none;">
@@ -121,7 +114,6 @@ function ensureStoryModalExists() {
         </button>
       </div>
 
-      <!-- 4. Нижний блок действий в одну строчку -->
       <div style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">
         <div style="display:flex; gap:8px;">
           <button type="button" id="story-btn-bot" onclick="sendStoryToBotChat()" style="flex:1.2; height:42px; background:#0284c7; color:#fff; border:none; border-radius:12px; font-weight:800; font-size:13.5px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 4px 14px rgba(2,132,199,0.35);">
@@ -137,7 +129,7 @@ function ensureStoryModalExists() {
         </div>
 
         <div style="font-size:10.5px; color:#64748b; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-          *Для отправки в чат запустите бота <a href="${BOT_START_LINK}" target="_blank" style="color:#38bdf8; text-decoration:underline;">@${BOT_USERNAME}</a>
+          *Для отправки файла активируйте <a href="${BOT_START_LINK}" target="_blank" style="color:#38bdf8; text-decoration:underline;">@${BOT_USERNAME}</a>
         </div>
       </div>
     </div>
@@ -151,7 +143,6 @@ function setupStoryControls() {
   const hasParams = storyState.params && Object.keys(storyState.params).length > 0;
 
   box.innerHTML = `
-    <!-- Строка 1: Формат и тумблер телеметрии -->
     <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
       <div style="display:flex; background:rgba(15,23,42,0.8); padding:2px; border-radius:999px; border:1px solid rgba(255,255,255,0.1);">
         <button type="button" onclick="setStoryFormat('static')" style="padding:4px 12px; border-radius:999px; font-size:12px; font-weight:700; cursor:pointer; border:none; background:${storyState.format === 'static' ? storyState.neonColor : 'transparent'}; color:${storyState.format === 'static' ? '#040711' : '#94a3b8'};">
@@ -170,7 +161,6 @@ function setupStoryControls() {
       ` : '<div></div>'}
     </div>
 
-    <!-- Строка 2: Цветовые акценты -->
     <div style="display:flex; justify-content:space-between; align-items:center; padding-top:2px;">
       <span style="font-size:11.5px; color:#94a3b8; font-weight:600;">Неон:</span>
       <div style="display:flex; gap:10px;">
@@ -202,14 +192,14 @@ function applyStoryFormat(fmt) {
     if (previewImg) previewImg.style.display = 'none';
     if (replayBtn) replayBtn.style.display = 'block';
     if (btnDownloadText) btnDownloadText.textContent = '💾 Скачать MP4';
-    if (btnBotText) btnBotText.textContent = 'Видео в Telegram';
+    if (btnBotText) btnBotText.textContent = '🎬 Видео в Telegram';
     startAnimation();
   } else {
     if (canvas) canvas.style.display = 'none';
     if (previewImg) previewImg.style.display = 'block';
     if (replayBtn) replayBtn.style.display = 'none';
     if (btnDownloadText) btnDownloadText.textContent = '💾 Скачать PNG';
-    if (btnBotText) btnBotText.textContent = 'Фото в Telegram';
+    if (btnBotText) btnBotText.textContent = '📷 Фото в Telegram';
     renderSingleStaticFrame();
   }
 }
@@ -243,19 +233,12 @@ function closeStoryModal() {
   }
 }
 
-// -------------------------------------------------------
-// АНИМАЦИОННЫЙ ЦИКЛ (8 СЕКУНД)
-// -------------------------------------------------------
 function startAnimation() {
   animStartTime = performance.now();
   function tick(now) {
     const elapsed = now - animStartTime;
-    // Нарастание длится 2.6 сек, затем значение фиксируется на 100%
     const revealProgress = Math.min(1.0, elapsed / REVEAL_DURATION);
-
     drawStoryFrame(revealProgress, elapsed);
-
-    // Продолжаем бесконечный живой пульс ЭКГ и неона для предпросмотра
     animFrameId = requestAnimationFrame(tick);
   }
   animFrameId = requestAnimationFrame(tick);
@@ -282,9 +265,6 @@ function renderSingleStaticFrame() {
   }
 }
 
-// -------------------------------------------------------
-// ГРАФИЧЕСКИЙ РЕНДЕР КАДРА
-// -------------------------------------------------------
 function drawStoryFrame(progress, elapsedMs) {
   const canvas = document.getElementById('story-canvas');
   if (!canvas) return;
@@ -294,7 +274,6 @@ function drawStoryFrame(progress, elapsedMs) {
   const neon = storyState.neonColor;
   const isAnimated = (storyState.format === 'animated');
 
-  // Кривые плавности появления
   const pCard = easeOutCubic(clamp((progress - 0.0) / 0.22, 0, 1));
   const pHeader = easeOutCubic(clamp((progress - 0.12) / 0.25, 0, 1));
   const pValue = easeOutCubic(clamp((progress - 0.22) / 0.45, 0, 1));
@@ -303,7 +282,6 @@ function drawStoryFrame(progress, elapsedMs) {
   const pSub = easeOutCubic(clamp((progress - 0.65) / 0.25, 0, 1));
   const pHud = easeOutCubic(clamp((progress - 0.72) / 0.28, 0, 1));
 
-  // 1. Фон
   const bgGrad = ctx.createLinearGradient(0, 0, w, h);
   bgGrad.addColorStop(0, '#060913');
   bgGrad.addColorStop(0.5, '#0b1329');
@@ -311,7 +289,6 @@ function drawStoryFrame(progress, elapsedMs) {
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, w, h);
 
-  // 2. Дыхание неоновой ауры
   const pulseFactor = isAnimated ? (1 + 0.14 * Math.sin(elapsedMs * 0.0035)) : 1;
   const radialGlow = ctx.createRadialGradient(w / 2, 850, 70, w / 2, 850, 700 * pulseFactor);
   radialGlow.addColorStop(0, hexToRgba(neon, 0.26));
@@ -319,7 +296,6 @@ function drawStoryFrame(progress, elapsedMs) {
   ctx.fillStyle = radialGlow;
   ctx.fillRect(0, 0, w, h);
 
-  // 3. Главная стеклянная карточка
   const cardX = 70, cardY = 105, cardW = 940, cardH = 1710, cardR = 52;
   ctx.save();
   if (isAnimated) ctx.globalAlpha = pCard;
@@ -336,7 +312,6 @@ function drawStoryFrame(progress, elapsedMs) {
   ctx.shadowBlur = 0;
   ctx.restore();
 
-  // 4. Шапка и анимированный логотип
   ctx.save();
   if (isAnimated) ctx.globalAlpha = pHeader;
 
@@ -350,10 +325,8 @@ function drawStoryFrame(progress, elapsedMs) {
   ctx.fillStyle = '#94a3b8';
   ctx.fillText('Татьяна Львова', cardX + cardW - 55, cardY + 90);
 
-  // Живая кардиограмма
   drawEcgPulse(ctx, w / 2, cardY + 155, 480, neon, elapsedMs, isAnimated);
 
-  // Футер
   ctx.textAlign = 'center';
   ctx.font = '700 32px Manrope, sans-serif';
   ctx.fillStyle = '#64748b';
@@ -364,7 +337,6 @@ function drawStoryFrame(progress, elapsedMs) {
   ctx.fillText(`Проверь свои показатели ↗ @${BOT_USERNAME}`, w / 2, cardY + cardH - 50);
   ctx.restore();
 
-  // 5. Расчет вертикального размещения
   const topBoundary = cardY + 180;
   const bottomBoundary = cardY + cardH - 140;
   const availableH = bottomBoundary - topBoundary;
@@ -444,7 +416,7 @@ function drawStoryFrame(progress, elapsedMs) {
   ctx.restore();
   curY += gap;
 
-  // Анимированное значение
+  // Значение
   ctx.save();
   if (isAnimated) ctx.globalAlpha = pValue;
   const displayVal = isAnimated ? getCountUpValue(storyState.value, pValue) : storyState.value;
@@ -464,7 +436,7 @@ function drawStoryFrame(progress, elapsedMs) {
   ctx.restore();
   curY += valueH + gap;
 
-  // Статус-бейдж
+  // Статус
   ctx.save();
   if (isAnimated) ctx.globalAlpha = clamp(pBadge, 0, 1);
   const statusText = storyState.status.toUpperCase();
@@ -535,7 +507,7 @@ function drawStoryFrame(progress, elapsedMs) {
     if (showParamsActive && paramsBoxH > 0) curY += gap;
   }
 
-  // Телеметрия HUD
+  // HUD параметры
   if (showParamsActive && paramsBoxH > 0) {
     ctx.save();
     if (isAnimated) ctx.globalAlpha = pHud;
@@ -587,9 +559,6 @@ function drawStoryFrame(progress, elapsedMs) {
   }
 }
 
-// -------------------------------------------------------
-// АНИМАЦИЯ ЭКГ
-// -------------------------------------------------------
 function drawEcgPulse(ctx, centerX, y, width, neon, elapsedMs = 0, isAnimated = false) {
   ctx.save();
   const left = centerX - width / 2;
@@ -672,9 +641,6 @@ function getCountUpValue(targetStr, progress) {
   return `${prefix}${formatted}${suffix}`;
 }
 
-// -------------------------------------------------------
-// ВИДЖЕТЫ
-// -------------------------------------------------------
 function drawCanvasScale(ctx, centerX, topY, width, bmiVal, progress = 1.0) {
   const left = centerX - width / 2;
   const barH = 22;
@@ -1004,9 +970,6 @@ function drawCanvasKvas(ctx, centerX, topY, width, hemo, progress = 1.0) {
   });
 }
 
-// -------------------------------------------------------
-// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-// -------------------------------------------------------
 function easeOutCubic(x) { return 1 - Math.pow(1 - x, 3); }
 function easeOutBack(x) {
   const c1 = 1.70158;
@@ -1057,9 +1020,15 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-// -------------------------------------------------------
-// ЗАПИСЬ ВИДЕО (8 СЕКУНД) И СКАЧИВАНИЕ
-// -------------------------------------------------------
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 async function downloadStoryMedia() {
   if (storyState.format === 'animated') {
     await recordAndSaveVideo();
@@ -1112,15 +1081,20 @@ async function recordAndSaveVideo() {
 function captureCanvasVideo(canvas, durationMs) {
   return new Promise((resolve) => {
     const stream = canvas.captureStream(30);
+
     let mimeType = 'video/mp4';
-    if (!MediaRecorder.isTypeSupported(mimeType)) {
-      mimeType = 'video/webm;codecs=vp9';
-      if (!MediaRecorder.isTypeSupported(mimeType)) {
+    if (!window.MediaRecorder || !MediaRecorder.isTypeSupported(mimeType)) {
+      if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
+        mimeType = 'video/webm;codecs=vp9';
+      } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) {
+        mimeType = 'video/webm;codecs=vp8';
+      } else {
         mimeType = 'video/webm';
       }
     }
 
-    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 4500000 });
+    // 2.2 Мбит/с — комфортный битрейт для мобильных, вес ~2 МБ за 8 секунд (быстро грузится)
+    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 2200000 });
     const chunks = [];
 
     recorder.ondataavailable = (e) => {
@@ -1142,6 +1116,9 @@ function captureCanvasVideo(canvas, durationMs) {
   });
 }
 
+/**
+ * Отправка медиафайла (ВИДЕО MP4 ИЛИ ФОТО) в личный чат с ботом
+ */
 async function sendStoryToBotChat() {
   if (storyState.isBusy) return;
   const canvas = document.getElementById('story-canvas');
@@ -1157,36 +1134,69 @@ async function sendStoryToBotChat() {
 
   storyState.isBusy = true;
   const origText = btnText ? btnText.textContent : '';
-  if (btnText) btnText.textContent = '⏳ Отправка...';
 
   try {
-    const dataUrl = canvas.toDataURL('image/png');
+    let payload = {};
+
+    if (storyState.format === 'animated') {
+      if (btnText) btnText.textContent = '⏳ Рендеринг 8с...';
+      const videoBlob = await captureCanvasVideo(canvas, TOTAL_VIDEO_DURATION);
+
+      if (btnText) btnText.textContent = '⏳ Отправка видео...';
+      const base64Video = await blobToBase64(videoBlob);
+
+      payload = {
+        video: base64Video,
+        type: 'video',
+        mimeType: videoBlob.type || 'video/mp4',
+        userId: userId,
+        chatId: userId,
+        caption: `🎬 Результат теста: <b>${storyState.title}</b>\nПоказатель: <b>${storyState.value}</b> ${storyState.unit}\nСтатус: <b>${storyState.status}</b>\n\n<i>⚡ Отправлено из «Физра & Йога»</i>`
+      };
+    } else {
+      if (btnText) btnText.textContent = '⏳ Отправка фото...';
+      const dataUrl = canvas.toDataURL('image/png');
+
+      payload = {
+        image: dataUrl,
+        photo: dataUrl,
+        type: 'photo',
+        userId: userId,
+        chatId: userId,
+        caption: `📊 Результат теста: <b>${storyState.title}</b>\nПоказатель: <b>${storyState.value}</b> ${storyState.unit}\nСтатус: <b>${storyState.status}</b>\n\n<i>⚡ Отправлено из «Физра & Йога»</i>`
+      };
+    }
+
     const res = await fetch('/api/send-photo', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        image: dataUrl,
-        photo: dataUrl,
-        userId: userId,
-        chatId: userId,
-        caption: `📊 Результат теста: *${storyState.title}*\nЗначение: *${storyState.value}* ${storyState.unit}\nСтатус: *${storyState.status}*`
-      })
+      body: JSON.stringify(payload)
     });
 
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Ошибка отправки');
-    alert(`✅ Карточка отправлена в чат бота @${BOT_USERNAME}!`);
+    if (!res.ok) throw new Error(data.details || data.error || 'Ошибка отправки файла');
+
+    const successMsg = storyState.format === 'animated'
+      ? `✅ Видео-сторис (8 сек) успешно отправлено вам в диалог с ботом @${BOT_USERNAME}!`
+      : `✅ Фото-карточка успешно отправлена вам в диалог с ботом @${BOT_USERNAME}!`;
+
+    if (window.Telegram?.WebApp?.showAlert) {
+      window.Telegram.WebApp.showAlert(successMsg);
+    } else {
+      alert(successMsg);
+    }
+
   } catch (err) {
     console.warn('Bot send error, fallback download:', err);
     downloadStoryMedia();
-    alert('Файл сохранен на ваше устройство.');
+    alert(`Не удалось отправить в чат бота (${err.message}). Файл сохранён на ваше устройство.`);
   } finally {
     storyState.isBusy = false;
     if (btnText) btnText.textContent = origText;
   }
 }
 
-// Экспорт
+// Экспорт функций в глобальное окно (Vanilla JS)
 window.storyGenerator = {
   openStoryModal,
   closeStoryModal,
