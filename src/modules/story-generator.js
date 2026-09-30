@@ -1,5 +1,5 @@
 /**
- * ЕДИНЫЙ МОДУЛЬ STORIES С АНИМАЦИЕЙ, ЗВУКОВЫМ ДВИЖКОМ И ЗАТЕМНЕНИЕМ (Vanilla JS)
+ * ЕДИНЫЙ МОДУЛЬ STORIES С АНИМАЦИЕЙ, ЗВУКОВЫМ ДВИЖКОМ И ВЫБОРОМ ИМЕНИ (Vanilla JS)
  * Файл: src/modules/story-generator.js (или story.js)
  */
 
@@ -9,10 +9,10 @@
   const BOT_USERNAME = 'zoj_tl_bot';
   const BOT_START_LINK = `https://t.me/${BOT_USERNAME}?start=start`;
 
-  // Тайминги ролика (общий хронометраж 8 секунд)
-  const TOTAL_VIDEO_DURATION = 8000; // 8.0 сек
+  // Тайминги ролика (общий хронометраж 8.0 секунд)
+  const TOTAL_VIDEO_DURATION = 8000;
   const REVEAL_DURATION = 3600;      // 3.6 сек на неспешное появление и накрутку цифр
-  const FADE_START_TIME = 6500;      // начало угасания экрана за 1.5 сек до конца
+  const FADE_START_TIME = 6500;      // за 1.5 сек до конца начинается плавное угасание экрана
 
   let storyState = {
     title: 'РЕЗУЛЬТАТ ТЕСТА',
@@ -25,6 +25,8 @@
     params: {},
     neonColor: '#38bdf8',
     showParams: false,
+    showAthleteName: true,
+    athleteName: '',
     format: 'animated', // 'static' | 'animated'
     isBusy: false
   };
@@ -33,42 +35,44 @@
   let animFrameId = null;
 
   // -------------------------------------------------------------
-  // ВСТРОЕННЫЙ СИНТЕЗАТОР ЗВУКОВ (WEB AUDIO API)
-  // Не требует загрузки MP3 файлов, генерирует звук на лету
+  // ЗВУКОВОЙ ДВИЖОК (WEB AUDIO API)
   // -------------------------------------------------------------
   let audioContext = null;
   let audioDestinationNode = null;
   let lastSoundTickTime = 0;
 
   function initAudioEngine() {
-    if (audioContext) return;
     try {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtx) return;
-      audioContext = new AudioCtx();
-      audioDestinationNode = audioContext.createMediaStreamDestination();
+      if (!audioContext) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        audioContext = new AudioCtx();
+        audioDestinationNode = audioContext.createMediaStreamDestination();
+      }
+      if (audioContext && audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
     } catch (e) {
-      console.warn('[StoryAudio] Web Audio API не поддерживается:', e);
+      console.warn('[StoryAudio] AudioContext init error:', e);
     }
   }
 
-  function playSynthSound(type = 'tick', customDest = null) {
+  function playSynthSound(type = 'tick', dest = null) {
     if (!audioContext) return;
-    if (audioContext.state === 'suspended') {
-      audioContext.resume();
-    }
+    if (audioContext.state === 'suspended') audioContext.resume();
 
     const t = audioContext.currentTime;
     const osc = audioContext.createOscillator();
     const gain = audioContext.createGain();
 
-    // Подключаем звук к колонкам и/или к дорожке видеозаписи
     gain.connect(audioContext.destination);
-    if (customDest) gain.connect(customDest);
-    else if (audioDestinationNode) gain.connect(audioDestinationNode);
+    if (dest) {
+      gain.connect(dest);
+    } else if (audioDestinationNode) {
+      gain.connect(audioDestinationNode);
+    }
 
     if (type === 'tick') {
-      // Короткий технологичный щелчок отсчёта цифр
       osc.type = 'sine';
       osc.frequency.setValueAtTime(550 + Math.random() * 250, t);
       osc.frequency.exponentialRampToValueAtTime(150, t + 0.035);
@@ -77,7 +81,6 @@
       osc.start(t);
       osc.stop(t + 0.04);
     } else if (type === 'whoosh') {
-      // Мягкий футуристичный наплыв при старте
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(120, t);
       osc.frequency.exponentialRampToValueAtTime(380, t + 0.25);
@@ -87,7 +90,6 @@
       osc.start(t);
       osc.stop(t + 0.3);
     } else if (type === 'chime') {
-      // Приятный акцент-колокольчик фиксации статуса
       osc.type = 'sine';
       osc.frequency.setValueAtTime(880, t);
       osc.frequency.exponentialRampToValueAtTime(1760, t + 0.08);
@@ -95,23 +97,113 @@
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
       osc.start(t);
       osc.stop(t + 0.6);
-    } else if (type === 'heartbeat') {
-      // Глубокий мягкий удар пульса
+    }
+  }
+
+  // Синтез звука выключения кинескопного ТВ (высокочастотный спад луча + щелчок статики)
+  function playCrtOffSound(destNode = null, atTime = null) {
+    if (!audioContext) return;
+    if (audioContext.state === 'suspended') audioContext.resume();
+
+    const t = atTime || audioContext.currentTime;
+
+    // 1. Щелчок выключения выключателя/реле (резкий импульс)
+    const clickOsc = audioContext.createOscillator();
+    const clickGain = audioContext.createGain();
+    clickOsc.type = 'square';
+    clickOsc.frequency.setValueAtTime(120, t);
+    clickGain.gain.setValueAtTime(0.2, t);
+    clickGain.gain.exponentialRampToValueAtTime(0.001, t + 0.025);
+    clickOsc.connect(clickGain);
+
+    // 2. Свист угасающего электронного луча (писк падает от 8 кГц до 50 Гц)
+    const whineOsc = audioContext.createOscillator();
+    const whineGain = audioContext.createGain();
+    whineOsc.type = 'sine';
+    whineOsc.frequency.setValueAtTime(7500, t);
+    whineOsc.frequency.exponentialRampToValueAtTime(60, t + 0.28);
+    whineGain.gain.setValueAtTime(0.08, t);
+    whineGain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    whineOsc.connect(whineGain);
+
+    // Вывод в динамики и/или видеопоток
+    const targetDest = destNode || audioDestinationNode;
+    if (targetDest) {
+      clickGain.connect(targetDest);
+      whineGain.connect(targetDest);
+    }
+    clickGain.connect(audioContext.destination);
+    whineGain.connect(audioContext.destination);
+
+    clickOsc.start(t);
+    clickOsc.stop(t + 0.03);
+    whineOsc.start(t);
+    whineOsc.stop(t + 0.32);
+  }
+
+  // Планирование звукового ряда строго по таймлайну при рендере видео
+  function scheduleVideoAudioTimeline(destNode) {
+    if (!audioContext || !destNode) return;
+    if (audioContext.state === 'suspended') audioContext.resume();
+
+    const startTime = audioContext.currentTime + 0.05;
+
+    // 1. Whoosh на старте
+    scheduleSoundEvent('whoosh', startTime, destNode);
+
+    // 2. Серия щелчков накрутки цифр (от 0.7с до 3.3с)
+    for (let offset = 0.7; offset <= 3.3; offset += 0.11) {
+      scheduleSoundEvent('tick', startTime + offset, destNode);
+    }
+
+    // 3. Звонкий акцент фиксации результата (на 3.5с)
+    scheduleSoundEvent('chime', startTime + 3.5, destNode);
+  
+    // 4? Звук выключения старого телевизора ровно на 6.5с (за 1.5с до конца)
+    playCrtOffSound(destNode, startTime + 6.5);
+  }
+
+  function scheduleSoundEvent(type, time, destNode) {
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    gain.connect(destNode);
+
+    if (type === 'whoosh') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(120, time);
+      osc.frequency.exponentialRampToValueAtTime(380, time + 0.25);
+      gain.gain.setValueAtTime(0.01, time);
+      gain.gain.linearRampToValueAtTime(0.1, time + 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.28);
+      osc.start(time);
+      osc.stop(time + 0.3);
+    } else if (type === 'tick') {
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(85, t);
-      osc.frequency.exponentialRampToValueAtTime(42, t + 0.12);
-      gain.gain.setValueAtTime(0.15, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
-      osc.start(t);
-      osc.stop(t + 0.15);
+      osc.frequency.setValueAtTime(500 + Math.random() * 200, time);
+      osc.frequency.exponentialRampToValueAtTime(160, time + 0.035);
+      gain.gain.setValueAtTime(0.08, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.035);
+      osc.start(time);
+      osc.stop(time + 0.04);
+    } else if (type === 'chime') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(900, time);
+      osc.frequency.exponentialRampToValueAtTime(1800, time + 0.09);
+      gain.gain.setValueAtTime(0.14, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.55);
+      osc.start(time);
+      osc.stop(time + 0.6);
     }
   }
 
   // -------------------------------------------------------------
-  // ТОЧКА ВХОДА И УПРАВЛЕНИЕ МОДАЛКОЙ
+  // ТОЧКА ВХОДА
   // -------------------------------------------------------------
   function openStoryModal(arg1, arg2, arg3, arg4, arg5) {
     initAudioEngine();
+
+    const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+    const defaultName = tgUser?.first_name || (tgUser?.username ? `@${tgUser.username}` : 'Атлет');
 
     if (typeof arg1 === 'object' && arg1 !== null) {
       storyState.title = arg1.title || 'РЕЗУЛЬТАТ ТЕСТА';
@@ -138,6 +230,10 @@
         storyState.type = detectTestType(storyState.title);
         storyState.extra = {};
       }
+    }
+
+    if (!storyState.athleteName) {
+      storyState.athleteName = defaultName;
     }
 
     storyState.showParams = storyState.params && Object.keys(storyState.params).length > 0;
@@ -188,8 +284,10 @@
           <button type="button" onclick="window.closeStoryModal()" style="background:none; border:none; font-size:20px; color:#94a3b8; cursor:pointer; padding:0 4px; line-height:1;">✕</button>
         </div>
 
-        <div class="story-controls" style="display:flex; flex-direction:column; gap:6px; margin-bottom:6px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); padding:8px 10px; border-radius:14px;"></div>
+        <!-- 2-РЯДНЫЙ БЛОК УПРАВЛЕНИЯ -->
+        <div class="story-controls" style="display:flex; flex-direction:column; gap:8px; margin-bottom:8px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); padding:8px 10px; border-radius:14px;"></div>
 
+        <!-- ПРЕВЬЮ СТОРИС -->
         <div class="story-preview-container" style="flex:1; min-height:0; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden;">
           <canvas id="story-canvas" width="1080" height="1920" style="max-height:100%; max-width:100%; aspect-ratio:9/16; object-fit:contain; border-radius:14px; box-shadow:0 8px 30px rgba(0,0,0,0.65); display:block;"></canvas>
           <img id="story-preview-img" alt="Предпросмотр" style="max-height:100%; max-width:100%; aspect-ratio:9/16; object-fit:contain; border-radius:14px; box-shadow:0 8px 30px rgba(0,0,0,0.65); display:none;">
@@ -199,15 +297,15 @@
           </button>
         </div>
 
+        <!-- КНОПКИ ДЕЙСТВИЯ -->
         <div style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">
-          <!-- Кнопка прямой публикации в Stories Telegram -->
           <button type="button" id="story-btn-native-share" onclick="window.shareDirectlyToTelegramStory()" style="width:100%; height:40px; background:linear-gradient(90deg, #38bdf8 0%, #a855f7 100%); color:#ffffff; border:none; border-radius:12px; font-weight:800; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 4px 15px rgba(56,189,248,0.25);">
             <span>⚡ Опубликовать в Stories Telegram</span>
           </button>
 
           <div style="display:flex; gap:8px;">
             <button type="button" id="story-btn-bot" onclick="window.sendStoryToBotChat()" style="flex:1.2; height:38px; background:#0284c7; color:#fff; border:none; border-radius:10px; font-weight:800; font-size:12.5px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
-              <span id="story-btn-bot-text">В чат бота</span>
+              <span id="story-btn-bot-text">🎬 Видео ботом</span>
             </button>
 
             <button type="button" id="story-btn-download" onclick="window.downloadStoryMedia()" style="flex:1; height:38px; background:rgba(255,255,255,0.08); color:#f8fafc; border:1px solid rgba(255,255,255,0.18); border-radius:10px; font-weight:700; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px;">
@@ -219,6 +317,9 @@
     `;
   }
 
+  // -------------------------------------------------------------
+  // ОРГАНИЗАЦИЯ БЛОКА НАСТРОЕК (СТРОГО В 2 РЯДА)
+  // -------------------------------------------------------------
   function setupStoryControls() {
     const box = document.querySelector('.story-controls');
     if (!box) return;
@@ -226,36 +327,72 @@
     const hasParams = storyState.params && Object.keys(storyState.params).length > 0;
 
     box.innerHTML = `
+      <!-- РЯД 1: [Выбор формата] (слева) | [Данные] (справа) -->
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
         <div style="display:flex; background:rgba(15,23,42,0.8); padding:2px; border-radius:999px; border:1px solid rgba(255,255,255,0.1);">
           <button type="button" onclick="window.setStoryFormat('static')" style="padding:4px 12px; border-radius:999px; font-size:12px; font-weight:700; cursor:pointer; border:none; background:${storyState.format === 'static' ? storyState.neonColor : 'transparent'}; color:${storyState.format === 'static' ? '#040711' : '#94a3b8'};">
             📷 Фото
           </button>
           <button type="button" onclick="window.setStoryFormat('animated')" style="padding:4px 12px; border-radius:999px; font-size:12px; font-weight:700; cursor:pointer; border:none; background:${storyState.format === 'animated' ? storyState.neonColor : 'transparent'}; color:${storyState.format === 'animated' ? '#040711' : '#94a3b8'};">
-            🎬 Видео 8с + звук
+            🎬 Видео 8с
           </button>
         </div>
 
         ${hasParams ? `
-          <button type="button" onclick="window.toggleStoryParams(!storyState.showParams)" style="display:flex; align-items:center; gap:5px; background:${storyState.showParams ? hexToRgba(storyState.neonColor, 0.16) : 'rgba(255,255,255,0.06)'}; border:1px solid ${storyState.showParams ? storyState.neonColor : 'rgba(255,255,255,0.15)'}; color:${storyState.showParams ? '#fff' : '#94a3b8'}; padding:4px 10px; border-radius:999px; font-size:11.5px; font-weight:700; cursor:pointer;">
+          <button type="button" onclick="window.toggleStoryParams(!storyState.showParams)" style="display:flex; align-items:center; gap:5px; background:${storyState.showParams ? hexToRgba(storyState.neonColor, 0.16) : 'rgba(255,255,255,0.06)'}; border:1px solid ${storyState.showParams ? storyState.neonColor : 'rgba(255,255,255,0.15)'}; color:${storyState.showParams ? '#fff' : '#94a3b8'}; padding:4px 11px; border-radius:999px; font-size:11.5px; font-weight:700; cursor:pointer;">
             <span>📊 Данные</span>
             <span style="font-size:10px; opacity:0.8;">${storyState.showParams ? '✓' : ''}</span>
           </button>
         ` : '<div></div>'}
       </div>
 
-      <div style="display:flex; justify-content:space-between; align-items:center; padding-top:2px;">
-        <span style="font-size:11.5px; color:#94a3b8; font-weight:600;">Неон:</span>
-        <div style="display:flex; gap:10px;">
-          ${['#38bdf8', '#c084fc', '#10b981', '#f59e0b', '#f43f5e'].map(col => `
-            <button type="button" onclick="window.setStoryNeon('${col}')" style="width:20px; height:20px; border-radius:50%; background:${col}; border:${storyState.neonColor === col ? '2px solid #fff' : '2px solid transparent'}; box-shadow:${storyState.neonColor === col ? '0 0 10px ' + col : 'none'}; cursor:pointer; padding:0;"></button>
-          `).join('')}
+      <!-- РЯД 2: [Выбор неона] (слева) | [Имя атлета] (справа) -->
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:11px; color:#94a3b8; font-weight:600;">Неон:</span>
+          <div style="display:flex; gap:8px;">
+            ${['#38bdf8', '#c084fc', '#10b981', '#f59e0b', '#f43f5e'].map(col => `
+              <button type="button" onclick="window.setStoryNeon('${col}')" style="width:19px; height:19px; border-radius:50%; background:${col}; border:${storyState.neonColor === col ? '2px solid #fff' : '2px solid transparent'}; box-shadow:${storyState.neonColor === col ? '0 0 8px ' + col : 'none'}; cursor:pointer; padding:0;"></button>
+            `).join('')}
+          </div>
         </div>
+
+        <!-- Кнопка/тумблер имени атлета справа -->
+        <button type="button" onclick="window.toggleAthleteName()" style="display:flex; align-items:center; gap:5px; background:${storyState.showAthleteName ? hexToRgba(storyState.neonColor, 0.16) : 'rgba(255,255,255,0.06)'}; border:1px solid ${storyState.showAthleteName ? storyState.neonColor : 'rgba(255,255,255,0.15)'}; color:${storyState.showAthleteName ? '#fff' : '#94a3b8'}; padding:4px 11px; border-radius:999px; font-size:11.5px; font-weight:700; cursor:pointer;">
+          <span>👤 ${storyState.showAthleteName ? (storyState.athleteName || 'Атлет') : 'Без имени'}</span>
+          <span style="font-size:10px; opacity:0.8;">${storyState.showAthleteName ? '✓' : ''}</span>
+        </button>
       </div>
     `;
   }
 
+  function toggleAthleteName() {
+    initAudioEngine();
+    if (!storyState.showAthleteName) {
+      storyState.showAthleteName = true;
+    } else {
+      // Предлагаем изменить имя или отключить показ
+      const current = storyState.athleteName || 'Атлет';
+      const entered = prompt('Введите имя атлета для карточки (или оставьте пустым, чтобы скрыть имя):', current);
+      if (entered === null) {
+        // отмена
+      } else if (entered.trim() === '') {
+        storyState.showAthleteName = false;
+      } else {
+        storyState.athleteName = entered.trim();
+        storyState.showAthleteName = true;
+      }
+    }
+    setupStoryControls();
+    if (storyState.format === 'animated') {
+      restartAnimation();
+    } else {
+      renderSingleStaticFrame();
+    }
+  }
+
   function setStoryFormat(fmt) {
+    initAudioEngine();
     storyState.format = fmt;
     setupStoryControls();
     applyStoryFormat(fmt);
@@ -288,6 +425,7 @@
   }
 
   function setStoryNeon(color) {
+    initAudioEngine();
     storyState.neonColor = color;
     setupStoryControls();
     if (storyState.format === 'animated') {
@@ -298,6 +436,7 @@
   }
 
   function toggleStoryParams(checked) {
+    initAudioEngine();
     storyState.showParams = checked;
     setupStoryControls();
     if (storyState.format === 'animated') {
@@ -317,28 +456,26 @@
   }
 
   // -------------------------------------------------------------
-  // ЦИКЛ АНИМАЦИИ (3.6 СЕК НА ВЫЛЕТ + ФИКСАЦИЯ + ЗАТЕМНЕНИЕ В КОНЦЕ)
+  // ЦИКЛ АНИМАЦИИ (3.6с НАВЫЛЕТ + ФИКСАЦИЯ + 1.5с ЗАТЕМНЕНИЕ)
   // -------------------------------------------------------------
-  let playedSounds = { whoosh: false, chime: false };
+  let playedSounds = { whoosh: false, chime: false, crt: false };
 
   function startAnimation() {
     animStartTime = performance.now();
-    playedSounds = { whoosh: false, chime: false };
+    playedSounds = { whoosh: false, chime: false, crt: false };
     playSynthSound('whoosh');
 
     function tick(now) {
       const elapsed = now - animStartTime;
       const revealProgress = Math.min(1.0, elapsed / REVEAL_DURATION);
 
-      // Звуки тикания цифр каждые 85 мс во время нарастания
       if (revealProgress > 0.18 && revealProgress < 0.95) {
-        if (now - lastSoundTickTime > 85) {
+        if (now - lastSoundTickTime > 90) {
           playSynthSound('tick');
           lastSoundTickTime = now;
         }
       }
 
-      // Звуковой акцент победы при завершении нарастания
       if (revealProgress >= 1.0 && !playedSounds.chime) {
         playSynthSound('chime');
         playedSounds.chime = true;
@@ -358,6 +495,7 @@
   }
 
   function restartAnimation() {
+    initAudioEngine();
     stopAnimation();
     startAnimation();
   }
@@ -372,7 +510,7 @@
   }
 
   // -------------------------------------------------------------
-  // ОТРИСОВКА КАДРА НА ХОЛСТЕ
+  // ОТРИСОВКА ХОЛСТА (С ЗАТЕМНЕНИЕМ ЗА 1.5 СЕК ДО КОНЦА)
   // -------------------------------------------------------------
   function drawStoryFrame(progress, elapsedMs) {
     const canvas = document.getElementById('story-canvas');
@@ -383,7 +521,6 @@
     const neon = storyState.neonColor;
     const isAnimated = (storyState.format === 'animated');
 
-    // Плавные физические кривые раскрытия за 3.6 сек
     const pCard = easeOutCubic(clamp((progress - 0.0) / 0.2, 0, 1));
     const pHeader = easeOutCubic(clamp((progress - 0.1) / 0.22, 0, 1));
     const pValue = easeOutCubic(clamp((progress - 0.2) / 0.55, 0, 1));
@@ -425,7 +562,7 @@
     ctx.shadowBlur = 0;
     ctx.restore();
 
-    // 4. Шапка
+    // 4. Шапка карточки
     ctx.save();
     if (isAnimated) ctx.globalAlpha = pHeader;
 
@@ -434,21 +571,19 @@
     ctx.fillStyle = neon;
     ctx.fillText('ФИЗКУЛЬТУРА, ЗОЖ И СПОРТ', cardX + 55, cardY + 90);
 
-    // Имя пользователя Telegram или автора
-    const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
-    const athleteName = tgUser?.first_name 
-      ? `Атлет: ${tgUser.first_name}` 
+    // Правая часть шапки: имя атлета (если включено) или автор
+    const rightHeaderText = storyState.showAthleteName 
+      ? `Атлет: ${storyState.athleteName || 'Атлет'}` 
       : 'Татьяна Львова';
 
     ctx.textAlign = 'right';
     ctx.font = '700 32px Manrope, sans-serif';
     ctx.fillStyle = '#94a3b8';
-    ctx.fillText(athleteName, cardX + cardW - 55, cardY + 90);
+    ctx.fillText(rightHeaderText, cardX + cardW - 55, cardY + 90);
 
-    // Кардиограмма
     drawEcgPulse(ctx, w / 2, cardY + 155, 480, neon, elapsedMs, isAnimated);
 
-    // Футер карточки
+    // Футер
     ctx.textAlign = 'center';
     ctx.font = '700 32px Manrope, sans-serif';
     ctx.fillStyle = '#64748b';
@@ -681,22 +816,80 @@
       ctx.restore();
     }
 
-    // -------------------------------------------------------------
-    // ЭФФЕКТ ЗАТЕМНЕНИЯ / УГАСАНИЯ ЭКРАНА (ПОСЛЕДНИЕ 1.5 СЕКУНДЫ)
-    // -------------------------------------------------------------
-    if (isAnimated && elapsedMs > FADE_START_TIME) {
-      const fadeProgress = Math.min(1.0, (elapsedMs - FADE_START_TIME) / (TOTAL_VIDEO_DURATION - FADE_START_TIME));
-      const fadeAlpha = easeInQuad(fadeProgress);
+// =============================================================
+    // ЭФФЕКТ ВЫКЛЮЧЕНИЯ СТАРОГО ТЕЛЕВИЗОРА (CRT TV COLLAPSE)
+    // Начинается ровно на 6.5 сек (за 1.5 сек до конца)
+    // =============================================================
+    if (isAnimated && elapsedMs >= FADE_START_TIME) {
+      const crtElapsed = elapsedMs - FADE_START_TIME; // время от начала схлопывания (мс)
+      const crtTotal = 400; // само схлопывание длится 400 мс, затем полная темнота
+      const progress = Math.min(1.0, crtElapsed / crtTotal);
+
+      // В живом предпросмотре запускаем звук один раз на отметке старта
+      if (!playedSounds.crt) {
+        playCrtOffSound();
+        playedSounds.crt = true;
+      }
 
       ctx.save();
-      ctx.fillStyle = `rgba(4, 6, 13, ${fadeAlpha})`;
-      ctx.fillRect(0, 0, w, h);
+
+      if (progress < 0.6) {
+        // ЭТАП 1: Схлопывание сверху и снизу в тонкую ослепительную горизонтальную полосу
+        const p1 = progress / 0.6; // от 0 до 1
+        const remainingH = Math.max(4, h * (1 - Math.pow(p1, 2.5)));
+        const barTop = (h - remainingH) / 2;
+
+        // Черные створки сверху и снизу
+        ctx.fillStyle = '#04060d';
+        ctx.fillRect(0, 0, w, barTop);
+        ctx.fillRect(0, barTop + remainingH, w, h - (barTop + remainingH));
+
+        // Белая ослепительная вспышка линии по центру
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+        ctx.shadowColor = '#ffffff';
+        ctx.shadowBlur = 35;
+        ctx.fillRect(0, h / 2 - 3, w, 6);
+
+      } else if (progress < 0.9) {
+        // ЭТАП 2: Линия сжимается по бокам в одну яркую точку в центре
+        const p2 = (progress - 0.6) / 0.3; // от 0 до 1
+        const remainingW = Math.max(8, w * (1 - Math.pow(p2, 2)));
+
+        // Полный черный экран
+        ctx.fillStyle = '#04060d';
+        ctx.fillRect(0, 0, w, h);
+
+        // Стягивающаяся белая линия/точка
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#ffffff';
+        ctx.shadowBlur = 40;
+        ctx.fillRect((w - remainingW) / 2, h / 2 - 3, remainingW, 6);
+
+      } else if (progress < 1.0) {
+        // ЭТАП 3: Точка вспыхивает и угасает
+        const p3 = (progress - 0.9) / 0.1;
+        ctx.fillStyle = '#04060d';
+        ctx.fillRect(0, 0, w, h);
+
+        const dotAlpha = 1 - p3;
+        ctx.fillStyle = `rgba(255, 255, 255, ${dotAlpha})`;
+        ctx.shadowColor = '#ffffff';
+        ctx.shadowBlur = 25 * dotAlpha;
+        ctx.beginPath();
+        ctx.arc(w / 2, h / 2, 5 * dotAlpha, 0, Math.PI * 2);
+        ctx.fill();
+
+      } else {
+        // ЭТАП 4: Абсолютный черный экран до самого конца 8-й секунды
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, w, h);
+      }
+
       ctx.restore();
     }
-  }
 
   // -------------------------------------------------------------
-  // ВИДЖЕТЫ И ГРАФИКА
+  // ГРАФИЧЕСКИЕ ВИДЖЕТЫ
   // -------------------------------------------------------------
   function drawEcgPulse(ctx, centerX, y, width, neon, elapsedMs = 0, isAnimated = false) {
     ctx.save();
@@ -1170,9 +1363,10 @@
   }
 
   // -------------------------------------------------------------
-  // ЗАПИСЬ ВИДЕО (8 СЕКУНД) СО ЗВУКОВОЙ ДОРОЖКОЙ
+  // ГЕНЕРАЦИЯ ВИДЕОПОТОКА С АУДИОДОРОЖКОЙ (8 СЕКУНД)
   // -------------------------------------------------------------
   async function downloadStoryMedia() {
+    initAudioEngine();
     if (storyState.format === 'animated') {
       await recordAndSaveVideo();
     } else {
@@ -1214,7 +1408,7 @@
       document.body.removeChild(link);
       setTimeout(() => URL.revokeObjectURL(url), 5000);
     } catch (e) {
-      console.warn('[StoryVideo] Ошибка захвата, скачиваем PNG:', e);
+      console.warn('[StoryVideo] Fallback PNG:', e);
       downloadStaticPng();
     } finally {
       if (btn) btn.textContent = origText;
@@ -1228,7 +1422,7 @@
       const videoStream = canvas.captureStream(30);
       const tracks = [...videoStream.getVideoTracks()];
 
-      // Если аудиодвижок доступен, подмешиваем аудиодорожку в MP4 контейнер
+      // Подмешиваем аудиодорожку из Web Audio API
       if (audioDestinationNode && audioDestinationNode.stream) {
         const audioTracks = audioDestinationNode.stream.getAudioTracks();
         if (audioTracks.length > 0) {
@@ -1240,10 +1434,10 @@
 
       let mimeType = 'video/mp4';
       if (!window.MediaRecorder || !MediaRecorder.isTypeSupported(mimeType)) {
-        if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
-          mimeType = 'video/webm;codecs=vp9';
-        } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) {
-          mimeType = 'video/webm;codecs=vp8';
+        if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) {
+          mimeType = 'video/webm;codecs=vp9,opus';
+        } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')) {
+          mimeType = 'video/webm;codecs=vp8,opus';
         } else {
           mimeType = 'video/webm';
         }
@@ -1260,7 +1454,9 @@
         resolve(new Blob(chunks, { type: mimeType }));
       };
 
+      // Запускаем видео и точный звуковой таймлайн
       restartAnimation();
+      scheduleVideoAudioTimeline(audioDestinationNode);
       recorder.start();
 
       setTimeout(() => {
@@ -1275,12 +1471,19 @@
   // НАИВНАЯ ПУБЛИКАЦИЯ В STORIES TELEGRAM (SDK 7.8+)
   // -------------------------------------------------------------
   async function shareDirectlyToTelegramStory() {
+    initAudioEngine();
     const tg = window.Telegram?.WebApp;
     const canvas = document.getElementById('story-canvas');
     if (!canvas) return;
 
-    if (!tg || typeof tg.shareToStory !== 'function') {
-      alert('Публикация Stories не поддерживается вашей версией клиента Telegram. Нажмите «В чат бота», чтобы получить ролик!');
+    // Stories в Telegram доступны только на смартфонах с версией SDK 7.8+
+    const isMobileClient = tg && (tg.platform === 'ios' || tg.platform === 'android');
+    const isSupported = isMobileClient && typeof tg.shareToStory === 'function';
+
+    if (!isSupported) {
+      // На ПК или веб-версии нативные Stories не открываются
+      alert('Публикация Stories Telegram доступна в мобильном приложении (iOS/Android). Мы отправим готовый файл вам в чат бота!');
+      sendStoryToBotChat();
       return;
     }
 
@@ -1296,7 +1499,7 @@
         tg.shareToStory(videoUrl, {
           text: `Мой показатель: ${storyState.title} — ${storyState.value} (${storyState.status}) ⚡🧘`,
           widget_link: {
-            url: `https://t.me/${BOT_USERNAME}?startapp=calc`,
+            url: `https://t.me/${BOT_USERNAME}?start=calc`,
             name: 'Проверить себя'
           }
         });
@@ -1307,15 +1510,14 @@
           tg.shareToStory(photoUrl, {
             text: `Мой показатель: ${storyState.title} — ${storyState.value} (${storyState.status}) ⚡🧘`,
             widget_link: {
-              url: `https://t.me/${BOT_USERNAME}?startapp=calc`,
+              url: `https://t.me/${BOT_USERNAME}?start=calc`,
               name: 'Проверить себя'
             }
           });
         }, 'image/png');
       }
     } catch (e) {
-      console.error('shareToStory error:', e);
-      alert('Telegram не смог открыть редактор. Отправляем файл ботом...');
+      console.warn('shareToStory failed, fallback to bot:', e);
       sendStoryToBotChat();
     } finally {
       if (btn) btn.innerHTML = origText;
@@ -1326,6 +1528,7 @@
   // ОТПРАВКА В ЧАТ С БОТОМ
   // -------------------------------------------------------------
   async function sendStoryToBotChat() {
+    initAudioEngine();
     if (storyState.isBusy) return;
     const canvas = document.getElementById('story-canvas');
     const btnText = document.getElementById('story-btn-bot-text');
@@ -1383,7 +1586,7 @@
       if (!res.ok) throw new Error(data.details || data.error || 'Ошибка отправки файла');
 
       const successMsg = storyState.format === 'animated'
-        ? `✅ Видео-ролик со звуком отправлен вам в чат бота @${BOT_USERNAME}!`
+        ? `✅ Видео-ролик (8 сек) со звуком отправлен вам в чат бота @${BOT_USERNAME}!`
         : `✅ Фото-карточка отправлена вам в чат бота @${BOT_USERNAME}!`;
 
       if (window.Telegram?.WebApp?.showAlert) {
@@ -1403,7 +1606,7 @@
   }
 
   // -------------------------------------------------------------
-  // ЭКСПОРТ В ГЛОБАЛЬНЫЙ WINDOW ДЛЯ VANILLA JS
+  // ЭКСПОРТ В WINDOW
   // -------------------------------------------------------------
   window.storyGenerator = {
     openStoryModal,
@@ -1414,6 +1617,7 @@
     setStoryFormat,
     setStoryNeon,
     toggleStoryParams,
+    toggleAthleteName,
     restartAnimation
   };
 
@@ -1423,6 +1627,7 @@
   window.setStoryFormat = setStoryFormat;
   window.setStoryNeon = setStoryNeon;
   window.toggleStoryParams = toggleStoryParams;
+  window.toggleAthleteName = toggleAthleteName;
   window.restartStoryAnimation = restartAnimation;
   window.downloadStoryMedia = downloadStoryMedia;
   window.sendStoryToBotChat = sendStoryToBotChat;
