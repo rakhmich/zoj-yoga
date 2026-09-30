@@ -58,29 +58,29 @@
     }
   }
 
-  // Проигрывание щелчка и свиста выключения старого кинескопа
+  // Звук выключения кинескопного ТВ (щелчок реле + свист угасания луча)
   function playCrtOffSound(destNode = null, atTime = null) {
     if (!audioContext) return;
     if (audioContext.state === 'suspended') audioContext.resume();
 
     const t = atTime || audioContext.currentTime;
 
-    // 1. Щелчок тумблера/реле
+    // 1. Щелчок выключателя
     const clickOsc = audioContext.createOscillator();
     const clickGain = audioContext.createGain();
     clickOsc.type = 'square';
     clickOsc.frequency.setValueAtTime(140, t);
-    clickGain.gain.setValueAtTime(0.25, t);
+    clickGain.gain.setValueAtTime(0.22, t);
     clickGain.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
     clickOsc.connect(clickGain);
 
-    // 2. Свист угасающего луча кинескопа (от 7.5 кГц до 50 Гц)
+    // 2. Свист угасания электронов (7.5 кГц -> 40 Гц)
     const whineOsc = audioContext.createOscillator();
     const whineGain = audioContext.createGain();
     whineOsc.type = 'sine';
     whineOsc.frequency.setValueAtTime(7500, t);
-    whineOsc.frequency.exponentialRampToValueAtTime(50, t + 0.28);
-    whineGain.gain.setValueAtTime(0.1, t);
+    whineOsc.frequency.exponentialRampToValueAtTime(45, t + 0.28);
+    whineGain.gain.setValueAtTime(0.12, t);
     whineGain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
     whineOsc.connect(whineGain);
 
@@ -98,7 +98,8 @@
     whineOsc.stop(t + 0.32);
   }
 
-  function playSynthSound(type = 'tick', dest = null) {
+  // Звуки для живого предпросмотра
+  function playSynthSound(type = 'tick') {
     if (!audioContext) return;
     if (audioContext.state === 'suspended') audioContext.resume();
 
@@ -106,49 +107,49 @@
     const osc = audioContext.createOscillator();
     const gain = audioContext.createGain();
 
+    // СОЕДИНЯЕМ ОСЦИЛЛЯТОР С ГЕЙНОМ И КОЛОНКАМИ
+    osc.connect(gain);
     gain.connect(audioContext.destination);
-    if (dest) gain.connect(dest);
-    else if (audioDestinationNode) gain.connect(audioDestinationNode);
 
     if (type === 'tick') {
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(550 + Math.random() * 250, t);
-      osc.frequency.exponentialRampToValueAtTime(150, t + 0.035);
-      gain.gain.setValueAtTime(0.07, t);
+      osc.frequency.setValueAtTime(650 + Math.random() * 250, t);
+      osc.frequency.exponentialRampToValueAtTime(180, t + 0.035);
+      gain.gain.setValueAtTime(0.09, t);
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.035);
       osc.start(t);
       osc.stop(t + 0.04);
     } else if (type === 'whoosh') {
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(120, t);
-      osc.frequency.exponentialRampToValueAtTime(380, t + 0.25);
+      osc.frequency.exponentialRampToValueAtTime(450, t + 0.24);
       gain.gain.setValueAtTime(0.01, t);
-      gain.gain.linearRampToValueAtTime(0.09, t + 0.12);
+      gain.gain.linearRampToValueAtTime(0.12, t + 0.12);
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
       osc.start(t);
       osc.stop(t + 0.3);
     } else if (type === 'chime') {
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, t);
-      osc.frequency.exponentialRampToValueAtTime(1760, t + 0.08);
-      gain.gain.setValueAtTime(0.14, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+      osc.frequency.setValueAtTime(950, t);
+      osc.frequency.exponentialRampToValueAtTime(1900, t + 0.08);
+      gain.gain.setValueAtTime(0.18, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
       osc.start(t);
-      osc.stop(t + 0.6);
+      osc.stop(t + 0.65);
     }
   }
 
-  // Расписание звуков строго по таймлайну при записи MP4
+  // Точное расписание звуков для дорожки видеофайла
   function scheduleVideoAudioTimeline(destNode) {
     if (!audioContext || !destNode) return;
     if (audioContext.state === 'suspended') audioContext.resume();
 
     const startTime = audioContext.currentTime + 0.05;
 
-    // Свиш при появлении
+    // Наплыв
     scheduleSoundEvent('whoosh', startTime, destNode);
 
-    // Тиканье цифр от 0.7с до 3.3с
+    // Щелчки отсчета (от 0.7с до 3.3с)
     for (let offset = 0.7; offset <= 3.3; offset += 0.11) {
       scheduleSoundEvent('tick', startTime + offset, destNode);
     }
@@ -156,45 +157,48 @@
     // Звонкий акцент на 3.5с
     scheduleSoundEvent('chime', startTime + 3.5, destNode);
 
-    // Звук выключения старого кинескопа на 6.7с
+    // Звук телевизора на 6.7с
     playCrtOffSound(destNode, startTime + 6.7);
   }
 
   function scheduleSoundEvent(type, time, destNode) {
     const osc = audioContext.createOscillator();
     const gain = audioContext.createGain();
+
+    // СОЕДИНЯЕМ ОСЦИЛЛЯТОР С ГЕЙНОМ И ДОРОЖКОЙ ЗАПИСИ
+    osc.connect(gain);
     gain.connect(destNode);
 
     if (type === 'whoosh') {
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(120, time);
-      osc.frequency.exponentialRampToValueAtTime(380, time + 0.25);
+      osc.frequency.exponentialRampToValueAtTime(450, time + 0.24);
       gain.gain.setValueAtTime(0.01, time);
-      gain.gain.linearRampToValueAtTime(0.1, time + 0.12);
+      gain.gain.linearRampToValueAtTime(0.15, time + 0.12);
       gain.gain.exponentialRampToValueAtTime(0.001, time + 0.28);
       osc.start(time);
       osc.stop(time + 0.3);
     } else if (type === 'tick') {
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(500 + Math.random() * 200, time);
-      osc.frequency.exponentialRampToValueAtTime(160, time + 0.035);
-      gain.gain.setValueAtTime(0.08, time);
+      osc.frequency.setValueAtTime(650 + Math.random() * 200, time);
+      osc.frequency.exponentialRampToValueAtTime(180, time + 0.035);
+      gain.gain.setValueAtTime(0.12, time);
       gain.gain.exponentialRampToValueAtTime(0.001, time + 0.035);
       osc.start(time);
       osc.stop(time + 0.04);
     } else if (type === 'chime') {
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(900, time);
-      osc.frequency.exponentialRampToValueAtTime(1800, time + 0.09);
-      gain.gain.setValueAtTime(0.15, time);
-      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.55);
+      osc.frequency.setValueAtTime(950, time);
+      osc.frequency.exponentialRampToValueAtTime(1900, time + 0.08);
+      gain.gain.setValueAtTime(0.2, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.6);
       osc.start(time);
-      osc.stop(time + 0.6);
+      osc.stop(time + 0.65);
     }
   }
 
   // -------------------------------------------------------------
-  // ТОЧКА ВХОДА И УПРАВЛЕНИЕ МОДАЛКОЙ
+  // ТОЧКА ВХОДА
   // -------------------------------------------------------------
   function openStoryModal(arg1, arg2, arg3, arg4, arg5) {
     initAudioEngine();
@@ -451,7 +455,7 @@
   }
 
   // -------------------------------------------------------------
-  // ЦИКЛ АНИМАЦИИ С КИНЕСКОПНЫМ ЗВУКОМ
+  // ЦИКЛ АНИМАЦИИ
   // -------------------------------------------------------------
   function startAnimation() {
     animStartTime = performance.now();
@@ -503,7 +507,7 @@
   }
 
   // -------------------------------------------------------------
-  // ОТРИСОВКА ХОЛСТА (С ЭФФЕКТОМ ВЫКЛЮЧЕНИЯ ТЕЛЕВИЗОРА В КОНЦЕ)
+  // ОТРИСОВКА ХОЛСТА (С ЗАТЕМНЕНИЕМ И СХЛОПЫВАНИЕМ В КОНЦЕ)
   // -------------------------------------------------------------
   function drawStoryFrame(progress, elapsedMs) {
     const canvas = document.getElementById('story-canvas');
@@ -572,6 +576,14 @@
     ctx.font = '700 32px Manrope, sans-serif';
     ctx.fillStyle = '#94a3b8';
     ctx.fillText(rightHeaderText, cardX + cardW - 55, cardY + 90);
+
+    // Дата и время замера (эффект спортивного протокола)
+    const now = new Date();
+    const dateFormatted = now.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const timeFormatted = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    ctx.font = '600 24px monospace';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText(`${dateFormatted} • ${timeFormatted}`, cardX + cardW - 55, cardY + 130);
 
     drawEcgPulse(ctx, w / 2, cardY + 155, 480, neon, elapsedMs, isAnimated);
 
@@ -814,10 +826,10 @@
     // =============================================================
     if (isAnimated && elapsedMs >= CRT_START_TIME) {
       const crtElapsed = elapsedMs - CRT_START_TIME;
-      const crtTotal = 360; // 360 мс на полное схлопывание
+      const crtTotal = 360;
       const progress = Math.min(1.0, crtElapsed / crtTotal);
 
-      // В живом предпросмотре запускаем звук кинескопа один раз
+      // Запуск звука схлопывания в предпросмотре
       if (!playedSounds.crt) {
         playCrtOffSound();
         playedSounds.crt = true;
