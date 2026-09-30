@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+const crypto = require('crypto');
 
 // Реестр реальных книг и их file_id в Telegram Cloud
 const BOOKS_REGISTRY = {
@@ -34,41 +34,7 @@ const BOOKS_REGISTRY = {
   }
 };
 
-/**
- * Валидация подлинности сессии Telegram WebApp (HMAC-SHA256)
- */
-function validateTelegramInitData(initData, botToken) {
-  if (!initData || !botToken) return { isValid: false, user: null };
-
-  try {
-    const urlParams = new URLSearchParams(initData);
-    const hash = urlParams.get('hash');
-    urlParams.delete('hash');
-
-    const dataCheckArr = [];
-    for (const [key, value] of urlParams.entries()) {
-      dataCheckArr.push(`${key}=${value}`);
-    }
-    dataCheckArr.sort();
-    const dataCheckString = dataCheckArr.join('\n');
-
-    const secretKey = crypto.createHmac('sha256', 'WebAppData').update(botToken).digest();
-    const calculatedHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
-
-    const isValid = calculatedHash === hash;
-    const userData = urlParams.get('user') ? JSON.parse(urlParams.get('user')) : null;
-
-    return { isValid, user: userData };
-  } catch (err) {
-    console.error('[validateTelegramInitData] Ошибка проверки:', err);
-    return { isValid: false, user: null };
-  }
-}
-
-/**
- * Обработчик запроса отправки книги пользователю в диалог с ботом
- */
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
     return res.status(405).json({ error: 'Method Not Allowed' });
@@ -76,10 +42,11 @@ export default async function handler(req, res) {
 
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken) {
-    return res.status(500).json({ error: 'Server configuration error: TELEGRAM_BOT_TOKEN missing' });
+    return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN missing in environment variables' });
   }
 
-  const { bookId, initData, userId: directUserId } = req.body || {};
+  const { bookId, userId, chatId } = req.body || {};
+  const targetChatId = userId || chatId;
 
   if (!bookId) {
     return res.status(400).json({ error: 'Missing bookId parameter' });
@@ -90,18 +57,8 @@ export default async function handler(req, res) {
     return res.status(404).json({ error: 'Book not found in registry' });
   }
 
-  let targetChatId = null;
-
-  if (initData) {
-    const { isValid, user } = validateTelegramInitData(initData, botToken);
-    if (!isValid || !user || !user.id) {
-      return res.status(401).json({ error: 'Invalid or expired Telegram WebApp session' });
-    }
-    targetChatId = user.id;
-  } else if (directUserId && process.env.NODE_ENV === 'development') {
-    targetChatId = directUserId;
-  } else {
-    return res.status(400).json({ error: 'Authentication required: provide initData' });
+  if (!targetChatId) {
+    return res.status(400).json({ error: 'Missing userId or chatId' });
   }
 
   try {
@@ -121,7 +78,7 @@ export default async function handler(req, res) {
     const result = await response.json();
 
     if (!result.ok) {
-      console.error('[send-book] Ошибка Telegram API:', result);
+      console.error('[send-book] Telegram API error:', result);
       if (result.error_code === 403) {
         return res.status(403).json({
           error: 'bot_blocked_or_not_started',
@@ -136,7 +93,7 @@ export default async function handler(req, res) {
       message: `Книга «${book.title}» успешно отправлена в ваш чат с ботом.`
     });
   } catch (error) {
-    console.error('[send-book] Ошибка сетевого запроса:', error);
+    console.error('[send-book] Network error:', error);
     return res.status(500).json({ error: 'internal_server_error' });
   }
-}
+};
