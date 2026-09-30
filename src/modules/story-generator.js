@@ -1,6 +1,6 @@
 /**
- * ЕДИНЫЙ МОДУЛЬ STORIES С АНИМАЦИЕЙ, ЗВУКОВЫМ ДВИЖКОМ И ВЫБОРОМ ИМЕНИ (Vanilla JS)
- * Файл: src/modules/story-generator.js (или story.js)
+ * ЕДИНЫЙ КЛИЕНТСКИЙ МОДУЛЬ STORIES С АНИМАЦИЕЙ, ЗВУКОМ И CRT-СХЛОПЫВАНИЕМ (Vanilla JS)
+ * Файл: src/modules/story-generator.js (и дубликат в story.js)
  */
 
 (function () {
@@ -11,8 +11,8 @@
 
   // Тайминги ролика (общий хронометраж 8.0 секунд)
   const TOTAL_VIDEO_DURATION = 8000;
-  const REVEAL_DURATION = 3600;      // 3.6 сек на неспешное появление и накрутку цифр
-  const FADE_START_TIME = 6500;      // за 1.5 сек до конца начинается плавное угасание экрана
+  const REVEAL_DURATION = 3600;      // 3.6 сек на красивое появление и накрутку цифр
+  const CRT_START_TIME = 6700;       // на 6.7с (за 1.3с до конца) начинается схлопывание кинескопа
 
   let storyState = {
     title: 'РЕЗУЛЬТАТ ТЕСТА',
@@ -35,11 +35,12 @@
   let animFrameId = null;
 
   // -------------------------------------------------------------
-  // ЗВУКОВОЙ ДВИЖОК (WEB AUDIO API)
+  // ВСТРОЕННЫЙ ЗВУКОВОЙ СИНТЕЗАТОР (WEB AUDIO API)
   // -------------------------------------------------------------
   let audioContext = null;
   let audioDestinationNode = null;
   let lastSoundTickTime = 0;
+  let playedSounds = { whoosh: false, chime: false, crt: false };
 
   function initAudioEngine() {
     try {
@@ -57,76 +58,32 @@
     }
   }
 
-  function playSynthSound(type = 'tick', dest = null) {
-    if (!audioContext) return;
-    if (audioContext.state === 'suspended') audioContext.resume();
-
-    const t = audioContext.currentTime;
-    const osc = audioContext.createOscillator();
-    const gain = audioContext.createGain();
-
-    gain.connect(audioContext.destination);
-    if (dest) {
-      gain.connect(dest);
-    } else if (audioDestinationNode) {
-      gain.connect(audioDestinationNode);
-    }
-
-    if (type === 'tick') {
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(550 + Math.random() * 250, t);
-      osc.frequency.exponentialRampToValueAtTime(150, t + 0.035);
-      gain.gain.setValueAtTime(0.06, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.035);
-      osc.start(t);
-      osc.stop(t + 0.04);
-    } else if (type === 'whoosh') {
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(120, t);
-      osc.frequency.exponentialRampToValueAtTime(380, t + 0.25);
-      gain.gain.setValueAtTime(0.01, t);
-      gain.gain.linearRampToValueAtTime(0.08, t + 0.12);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
-      osc.start(t);
-      osc.stop(t + 0.3);
-    } else if (type === 'chime') {
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, t);
-      osc.frequency.exponentialRampToValueAtTime(1760, t + 0.08);
-      gain.gain.setValueAtTime(0.12, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
-      osc.start(t);
-      osc.stop(t + 0.6);
-    }
-  }
-
-  // Синтез звука выключения кинескопного ТВ (высокочастотный спад луча + щелчок статики)
+  // Проигрывание щелчка и свиста выключения старого кинескопа
   function playCrtOffSound(destNode = null, atTime = null) {
     if (!audioContext) return;
     if (audioContext.state === 'suspended') audioContext.resume();
 
     const t = atTime || audioContext.currentTime;
 
-    // 1. Щелчок выключения выключателя/реле (резкий импульс)
+    // 1. Щелчок тумблера/реле
     const clickOsc = audioContext.createOscillator();
     const clickGain = audioContext.createGain();
     clickOsc.type = 'square';
-    clickOsc.frequency.setValueAtTime(120, t);
-    clickGain.gain.setValueAtTime(0.2, t);
-    clickGain.gain.exponentialRampToValueAtTime(0.001, t + 0.025);
+    clickOsc.frequency.setValueAtTime(140, t);
+    clickGain.gain.setValueAtTime(0.25, t);
+    clickGain.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
     clickOsc.connect(clickGain);
 
-    // 2. Свист угасающего электронного луча (писк падает от 8 кГц до 50 Гц)
+    // 2. Свист угасающего луча кинескопа (от 7.5 кГц до 50 Гц)
     const whineOsc = audioContext.createOscillator();
     const whineGain = audioContext.createGain();
     whineOsc.type = 'sine';
     whineOsc.frequency.setValueAtTime(7500, t);
-    whineOsc.frequency.exponentialRampToValueAtTime(60, t + 0.28);
-    whineGain.gain.setValueAtTime(0.08, t);
+    whineOsc.frequency.exponentialRampToValueAtTime(50, t + 0.28);
+    whineGain.gain.setValueAtTime(0.1, t);
     whineGain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
     whineOsc.connect(whineGain);
 
-    // Вывод в динамики и/или видеопоток
     const targetDest = destNode || audioDestinationNode;
     if (targetDest) {
       clickGain.connect(targetDest);
@@ -136,31 +93,71 @@
     whineGain.connect(audioContext.destination);
 
     clickOsc.start(t);
-    clickOsc.stop(t + 0.03);
+    clickOsc.stop(t + 0.035);
     whineOsc.start(t);
     whineOsc.stop(t + 0.32);
   }
 
-  // Планирование звукового ряда строго по таймлайну при рендере видео
+  function playSynthSound(type = 'tick', dest = null) {
+    if (!audioContext) return;
+    if (audioContext.state === 'suspended') audioContext.resume();
+
+    const t = audioContext.currentTime;
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+
+    gain.connect(audioContext.destination);
+    if (dest) gain.connect(dest);
+    else if (audioDestinationNode) gain.connect(audioDestinationNode);
+
+    if (type === 'tick') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(550 + Math.random() * 250, t);
+      osc.frequency.exponentialRampToValueAtTime(150, t + 0.035);
+      gain.gain.setValueAtTime(0.07, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.035);
+      osc.start(t);
+      osc.stop(t + 0.04);
+    } else if (type === 'whoosh') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(120, t);
+      osc.frequency.exponentialRampToValueAtTime(380, t + 0.25);
+      gain.gain.setValueAtTime(0.01, t);
+      gain.gain.linearRampToValueAtTime(0.09, t + 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+      osc.start(t);
+      osc.stop(t + 0.3);
+    } else if (type === 'chime') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, t);
+      osc.frequency.exponentialRampToValueAtTime(1760, t + 0.08);
+      gain.gain.setValueAtTime(0.14, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+      osc.start(t);
+      osc.stop(t + 0.6);
+    }
+  }
+
+  // Расписание звуков строго по таймлайну при записи MP4
   function scheduleVideoAudioTimeline(destNode) {
     if (!audioContext || !destNode) return;
     if (audioContext.state === 'suspended') audioContext.resume();
 
     const startTime = audioContext.currentTime + 0.05;
 
-    // 1. Whoosh на старте
+    // Свиш при появлении
     scheduleSoundEvent('whoosh', startTime, destNode);
 
-    // 2. Серия щелчков накрутки цифр (от 0.7с до 3.3с)
+    // Тиканье цифр от 0.7с до 3.3с
     for (let offset = 0.7; offset <= 3.3; offset += 0.11) {
       scheduleSoundEvent('tick', startTime + offset, destNode);
     }
 
-    // 3. Звонкий акцент фиксации результата (на 3.5с)
+    // Звонкий акцент на 3.5с
     scheduleSoundEvent('chime', startTime + 3.5, destNode);
-  
-    // 4? Звук выключения старого телевизора ровно на 6.5с (за 1.5с до конца)
-    playCrtOffSound(destNode, startTime + 6.5);
+
+    // Звук выключения старого кинескопа на 6.7с
+    playCrtOffSound(destNode, startTime + 6.7);
   }
 
   function scheduleSoundEvent(type, time, destNode) {
@@ -189,7 +186,7 @@
       osc.type = 'sine';
       osc.frequency.setValueAtTime(900, time);
       osc.frequency.exponentialRampToValueAtTime(1800, time + 0.09);
-      gain.gain.setValueAtTime(0.14, time);
+      gain.gain.setValueAtTime(0.15, time);
       gain.gain.exponentialRampToValueAtTime(0.001, time + 0.55);
       osc.start(time);
       osc.stop(time + 0.6);
@@ -197,7 +194,7 @@
   }
 
   // -------------------------------------------------------------
-  // ТОЧКА ВХОДА
+  // ТОЧКА ВХОДА И УПРАВЛЕНИЕ МОДАЛКОЙ
   // -------------------------------------------------------------
   function openStoryModal(arg1, arg2, arg3, arg4, arg5) {
     initAudioEngine();
@@ -284,10 +281,10 @@
           <button type="button" onclick="window.closeStoryModal()" style="background:none; border:none; font-size:20px; color:#94a3b8; cursor:pointer; padding:0 4px; line-height:1;">✕</button>
         </div>
 
-        <!-- 2-РЯДНЫЙ БЛОК УПРАВЛЕНИЯ -->
+        <!-- 2-РЯДНЫЙ БЛОК НАСТРОЕК -->
         <div class="story-controls" style="display:flex; flex-direction:column; gap:8px; margin-bottom:8px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); padding:8px 10px; border-radius:14px;"></div>
 
-        <!-- ПРЕВЬЮ СТОРИС -->
+        <!-- ХОЛСТ ПРЕДПРОСМОТРА -->
         <div class="story-preview-container" style="flex:1; min-height:0; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden;">
           <canvas id="story-canvas" width="1080" height="1920" style="max-height:100%; max-width:100%; aspect-ratio:9/16; object-fit:contain; border-radius:14px; box-shadow:0 8px 30px rgba(0,0,0,0.65); display:block;"></canvas>
           <img id="story-preview-img" alt="Предпросмотр" style="max-height:100%; max-width:100%; aspect-ratio:9/16; object-fit:contain; border-radius:14px; box-shadow:0 8px 30px rgba(0,0,0,0.65); display:none;">
@@ -297,7 +294,7 @@
           </button>
         </div>
 
-        <!-- КНОПКИ ДЕЙСТВИЯ -->
+        <!-- КНОПКИ ДЕЙСТВИЙ -->
         <div style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">
           <button type="button" id="story-btn-native-share" onclick="window.shareDirectlyToTelegramStory()" style="width:100%; height:40px; background:linear-gradient(90deg, #38bdf8 0%, #a855f7 100%); color:#ffffff; border:none; border-radius:12px; font-weight:800; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 4px 15px rgba(56,189,248,0.25);">
             <span>⚡ Опубликовать в Stories Telegram</span>
@@ -318,7 +315,7 @@
   }
 
   // -------------------------------------------------------------
-  // ОРГАНИЗАЦИЯ БЛОКА НАСТРОЕК (СТРОГО В 2 РЯДА)
+  // ПАНЕЛЬ НАСТРОЕК (СТРОГО В 2 РЯДА)
   // -------------------------------------------------------------
   function setupStoryControls() {
     const box = document.querySelector('.story-controls');
@@ -357,7 +354,6 @@
           </div>
         </div>
 
-        <!-- Кнопка/тумблер имени атлета справа -->
         <button type="button" onclick="window.toggleAthleteName()" style="display:flex; align-items:center; gap:5px; background:${storyState.showAthleteName ? hexToRgba(storyState.neonColor, 0.16) : 'rgba(255,255,255,0.06)'}; border:1px solid ${storyState.showAthleteName ? storyState.neonColor : 'rgba(255,255,255,0.15)'}; color:${storyState.showAthleteName ? '#fff' : '#94a3b8'}; padding:4px 11px; border-radius:999px; font-size:11.5px; font-weight:700; cursor:pointer;">
           <span>👤 ${storyState.showAthleteName ? (storyState.athleteName || 'Атлет') : 'Без имени'}</span>
           <span style="font-size:10px; opacity:0.8;">${storyState.showAthleteName ? '✓' : ''}</span>
@@ -371,9 +367,8 @@
     if (!storyState.showAthleteName) {
       storyState.showAthleteName = true;
     } else {
-      // Предлагаем изменить имя или отключить показ
       const current = storyState.athleteName || 'Атлет';
-      const entered = prompt('Введите имя атлета для карточки (или оставьте пустым, чтобы скрыть имя):', current);
+      const entered = prompt('Имя атлета для карточки (оставьте пустым, чтобы скрыть):', current);
       if (entered === null) {
         // отмена
       } else if (entered.trim() === '') {
@@ -456,10 +451,8 @@
   }
 
   // -------------------------------------------------------------
-  // ЦИКЛ АНИМАЦИИ (3.6с НАВЫЛЕТ + ФИКСАЦИЯ + 1.5с ЗАТЕМНЕНИЕ)
+  // ЦИКЛ АНИМАЦИИ С КИНЕСКОПНЫМ ЗВУКОМ
   // -------------------------------------------------------------
-  let playedSounds = { whoosh: false, chime: false, crt: false };
-
   function startAnimation() {
     animStartTime = performance.now();
     playedSounds = { whoosh: false, chime: false, crt: false };
@@ -510,7 +503,7 @@
   }
 
   // -------------------------------------------------------------
-  // ОТРИСОВКА ХОЛСТА (С ЗАТЕМНЕНИЕМ ЗА 1.5 СЕК ДО КОНЦА)
+  // ОТРИСОВКА ХОЛСТА (С ЭФФЕКТОМ ВЫКЛЮЧЕНИЯ ТЕЛЕВИЗОРА В КОНЦЕ)
   // -------------------------------------------------------------
   function drawStoryFrame(progress, elapsedMs) {
     const canvas = document.getElementById('story-canvas');
@@ -571,7 +564,6 @@
     ctx.fillStyle = neon;
     ctx.fillText('ФИЗКУЛЬТУРА, ЗОЖ И СПОРТ', cardX + 55, cardY + 90);
 
-    // Правая часть шапки: имя атлета (если включено) или автор
     const rightHeaderText = storyState.showAthleteName 
       ? `Атлет: ${storyState.athleteName || 'Атлет'}` 
       : 'Татьяна Львова';
@@ -816,16 +808,16 @@
       ctx.restore();
     }
 
-// =============================================================
-    // ЭФФЕКТ ВЫКЛЮЧЕНИЯ СТАРОГО ТЕЛЕВИЗОРА (CRT TV COLLAPSE)
-    // Начинается ровно на 6.5 сек (за 1.5 сек до конца)
     // =============================================================
-    if (isAnimated && elapsedMs >= FADE_START_TIME) {
-      const crtElapsed = elapsedMs - FADE_START_TIME; // время от начала схлопывания (мс)
-      const crtTotal = 400; // само схлопывание длится 400 мс, затем полная темнота
+    // ЭФФЕКТ ВЫКЛЮЧЕНИЯ СТАРОГО КИНЕСКОПА (CRT TV OFF)
+    // Начинается ровно на 6.7с (за 1.3с до конца)
+    // =============================================================
+    if (isAnimated && elapsedMs >= CRT_START_TIME) {
+      const crtElapsed = elapsedMs - CRT_START_TIME;
+      const crtTotal = 360; // 360 мс на полное схлопывание
       const progress = Math.min(1.0, crtElapsed / crtTotal);
 
-      // В живом предпросмотре запускаем звук один раз на отметке старта
+      // В живом предпросмотре запускаем звук кинескопа один раз
       if (!playedSounds.crt) {
         playCrtOffSound();
         playedSounds.crt = true;
@@ -833,63 +825,61 @@
 
       ctx.save();
 
-      if (progress < 0.6) {
-        // ЭТАП 1: Схлопывание сверху и снизу в тонкую ослепительную горизонтальную полосу
-        const p1 = progress / 0.6; // от 0 до 1
-        const remainingH = Math.max(4, h * (1 - Math.pow(p1, 2.5)));
+      if (progress < 0.55) {
+        // ЭТАП 1: Схлопывание сверху и снизу в тонкую ослепительную линию
+        const p1 = progress / 0.55;
+        const remainingH = Math.max(4, h * (1 - Math.pow(p1, 2.2)));
         const barTop = (h - remainingH) / 2;
 
-        // Черные створки сверху и снизу
-        ctx.fillStyle = '#04060d';
+        ctx.fillStyle = '#02040a';
         ctx.fillRect(0, 0, w, barTop);
         ctx.fillRect(0, barTop + remainingH, w, h - (barTop + remainingH));
 
-        // Белая ослепительная вспышка линии по центру
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+        // Белая яркая горизонтальная нить
+        ctx.fillStyle = '#ffffff';
         ctx.shadowColor = '#ffffff';
         ctx.shadowBlur = 35;
         ctx.fillRect(0, h / 2 - 3, w, 6);
 
-      } else if (progress < 0.9) {
-        // ЭТАП 2: Линия сжимается по бокам в одну яркую точку в центре
-        const p2 = (progress - 0.6) / 0.3; // от 0 до 1
-        const remainingW = Math.max(8, w * (1 - Math.pow(p2, 2)));
+      } else if (progress < 0.88) {
+        // ЭТАП 2: Линия сжимается по краям в одну точку по центру
+        const p2 = (progress - 0.55) / 0.33;
+        const remainingW = Math.max(6, w * (1 - Math.pow(p2, 2)));
 
-        // Полный черный экран
-        ctx.fillStyle = '#04060d';
+        ctx.fillStyle = '#02040a';
         ctx.fillRect(0, 0, w, h);
 
-        // Стягивающаяся белая линия/точка
         ctx.fillStyle = '#ffffff';
         ctx.shadowColor = '#ffffff';
         ctx.shadowBlur = 40;
         ctx.fillRect((w - remainingW) / 2, h / 2 - 3, remainingW, 6);
 
       } else if (progress < 1.0) {
-        // ЭТАП 3: Точка вспыхивает и угасает
-        const p3 = (progress - 0.9) / 0.1;
-        ctx.fillStyle = '#04060d';
+        // ЭТАП 3: Точка вспыхивает и гаснет
+        const p3 = (progress - 0.88) / 0.12;
+        ctx.fillStyle = '#02040a';
         ctx.fillRect(0, 0, w, h);
 
         const dotAlpha = 1 - p3;
         ctx.fillStyle = `rgba(255, 255, 255, ${dotAlpha})`;
         ctx.shadowColor = '#ffffff';
-        ctx.shadowBlur = 25 * dotAlpha;
+        ctx.shadowBlur = 30 * dotAlpha;
         ctx.beginPath();
         ctx.arc(w / 2, h / 2, 5 * dotAlpha, 0, Math.PI * 2);
         ctx.fill();
 
       } else {
-        // ЭТАП 4: Абсолютный черный экран до самого конца 8-й секунды
+        // ЭТАП 4: Абсолютная чернота до самого конца 8-й секунды
         ctx.fillStyle = '#000000';
         ctx.fillRect(0, 0, w, h);
       }
 
       ctx.restore();
     }
+  }
 
   // -------------------------------------------------------------
-  // ГРАФИЧЕСКИЕ ВИДЖЕТЫ
+  // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
   // -------------------------------------------------------------
   function drawEcgPulse(ctx, centerX, y, width, neon, elapsedMs = 0, isAnimated = false) {
     ctx.save();
@@ -1308,7 +1298,6 @@
     const c3 = c1 + 1;
     return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
   }
-  function easeInQuad(x) { return x * x; }
   function clamp(val, min, max) { return Math.min(max, Math.max(min, val)); }
 
   function wrapCanvasText(ctx, text, maxWidth) {
@@ -1363,7 +1352,7 @@
   }
 
   // -------------------------------------------------------------
-  // ГЕНЕРАЦИЯ ВИДЕОПОТОКА С АУДИОДОРОЖКОЙ (8 СЕКУНД)
+  // ЗАПИСЬ ВИДЕО (8 СЕКУНД) С ПОДМЕШИВАНИЕМ АУДИО
   // -------------------------------------------------------------
   async function downloadStoryMedia() {
     initAudioEngine();
@@ -1422,7 +1411,6 @@
       const videoStream = canvas.captureStream(30);
       const tracks = [...videoStream.getVideoTracks()];
 
-      // Подмешиваем аудиодорожку из Web Audio API
       if (audioDestinationNode && audioDestinationNode.stream) {
         const audioTracks = audioDestinationNode.stream.getAudioTracks();
         if (audioTracks.length > 0) {
@@ -1454,7 +1442,6 @@
         resolve(new Blob(chunks, { type: mimeType }));
       };
 
-      // Запускаем видео и точный звуковой таймлайн
       restartAnimation();
       scheduleVideoAudioTimeline(audioDestinationNode);
       recorder.start();
@@ -1468,7 +1455,7 @@
   }
 
   // -------------------------------------------------------------
-  // НАИВНАЯ ПУБЛИКАЦИЯ В STORIES TELEGRAM (SDK 7.8+)
+  // ПУБЛИКАЦИЯ В STORIES TELEGRAM (МОБИЛЬНЫЙ SDK)
   // -------------------------------------------------------------
   async function shareDirectlyToTelegramStory() {
     initAudioEngine();
@@ -1476,13 +1463,11 @@
     const canvas = document.getElementById('story-canvas');
     if (!canvas) return;
 
-    // Stories в Telegram доступны только на смартфонах с версией SDK 7.8+
     const isMobileClient = tg && (tg.platform === 'ios' || tg.platform === 'android');
     const isSupported = isMobileClient && typeof tg.shareToStory === 'function';
 
     if (!isSupported) {
-      // На ПК или веб-версии нативные Stories не открываются
-      alert('Публикация Stories Telegram доступна в мобильном приложении (iOS/Android). Мы отправим готовый файл вам в чат бота!');
+      alert('Публикация Stories Telegram доступна в мобильном приложении (iOS/Android). Отправляем файл вам в чат бота!');
       sendStoryToBotChat();
       return;
     }
@@ -1537,7 +1522,7 @@
     const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
     if (!userId) {
       downloadStoryMedia();
-      alert('Файл сохранен на ваше устройство!');
+      alert('Запустите приложение внутри Telegram через бота, чтобы бот мог прислать файл в чат. Файл скачан на устройство.');
       return;
     }
 
@@ -1586,7 +1571,7 @@
       if (!res.ok) throw new Error(data.details || data.error || 'Ошибка отправки файла');
 
       const successMsg = storyState.format === 'animated'
-        ? `✅ Видео-ролик (8 сек) со звуком отправлен вам в чат бота @${BOT_USERNAME}!`
+        ? `✅ Видео-ролик со звуком отправлен вам в чат бота @${BOT_USERNAME}!`
         : `✅ Фото-карточка отправлена вам в чат бота @${BOT_USERNAME}!`;
 
       if (window.Telegram?.WebApp?.showAlert) {
@@ -1606,7 +1591,7 @@
   }
 
   // -------------------------------------------------------------
-  // ЭКСПОРТ В WINDOW
+  // ЭКСПОРТ В ГЛОБАЛЬНЫЙ WINDOW
   // -------------------------------------------------------------
   window.storyGenerator = {
     openStoryModal,
