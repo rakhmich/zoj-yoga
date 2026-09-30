@@ -1,0 +1,264 @@
+/* ==========================================================================
+   БИБЛИОТЕКА ИКОНОК И МИКРОАНИМАЦИЙ: ФИЗКУЛЬТУРА & ЙОГА
+   ========================================================================== */
+
+.app-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.app-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* 1. Кардиограмма в шапке */
+.h1-pulse, .header-icon-fizra, .anim-pulse-ecg { overflow: visible; }
+.h1-pulse .pulse-line, .header-icon-fizra .pulse-line, .anim-pulse-ecg .pulse-line {
+  stroke-dasharray: 45;
+  stroke-dashoffset: 45;
+  animation: ecgLineDraw 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
+}
+@keyframes ecgLineDraw {
+  0% { stroke-dashoffset: 45; opacity: 0; }
+  15% { opacity: 1; }
+  50%, 65% { stroke-dashoffset: 0; opacity: 1; }
+  85% { stroke-dashoffset: -45; opacity: 1; }
+  100% { stroke-dashoffset: -45; opacity: 0; }
+}
+
+/* 1. ИМТ — бегущий луч сканера на платформе */
+/* Мягкое дыхание / пульсация (для точек, иконок) */
+.anim-breathe {
+  animation: softBreathe 3s ease-in-out infinite;
+  transform-origin: center center;
+}
+
+@keyframes softBreathe {
+  0%, 100% { 
+    transform: scale(0.85); 
+    opacity: 0.6; 
+  }
+  50% { 
+    transform: scale(1.2); 
+    opacity: 1; 
+    filter: drop-shadow(0 0 4px currentColor); 
+  }
+}
+
+/* 2. Руфье — анатомическая систола */
+.anim-rufier-pulse {
+  transform-origin: center center;
+  animation: rufierSystole 1.8s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+@keyframes rufierSystole {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(1.15); filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.7)); }
+  30% { transform: scale(0.98); }
+  45% { transform: scale(1.08); }
+}
+
+/* 3. Штанге — дыхательный цикл легких */
+.anim-lungs-breath {
+  transform-origin: center top;
+  animation: lungsExpand 3.8s ease-in-out infinite;
+}
+@keyframes lungsExpand {
+  0%, 100% { transform: scale(0.92); opacity: 0.75; }
+  45%, 60% { transform: scale(1.08); opacity: 1; filter: drop-shadow(0 0 6px #38bdf8); }
+}
+
+/* 4. Ромберг — гироскопический балансир */
+.anim-romberg-gyro {
+  transform-origin: center center;
+  animation: gyroWobble 4s ease-in-out infinite;
+}
+@keyframes gyroWobble {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-8deg); }
+  75% { transform: rotate(8deg); }
+}
+
+/* 3. Квас — стрелка спидометра выносливости */
+.anim-gauge-needle {
+  transform-origin: 12px 14px;
+  animation: gaugeSweep 3s ease-in-out infinite;
+}
+@keyframes gaugeSweep {
+  0%, 100% { transform: rotate(-35deg); }
+  50% { transform: rotate(35deg); }
+}
+
+/* 4. Кердо — балансир весов */
+.anim-kerdo-balance {
+  transform-origin: 12px 6px;
+  animation: kerdoOscillate 4s ease-in-out infinite;
+}
+@keyframes kerdoOscillate {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-6deg); }
+  75% { transform: rotate(6deg); }
+}
+
+/* 5. БМР — живое многослойное пламя */
+.anim-fire-outer {
+  transform-origin: center bottom;
+  animation: fireFlickerOuter 2.2s ease-in-out infinite alternate;
+}
+.anim-fire-inner {
+  transform-origin: center bottom;
+  animation: fireFlickerInner 1.4s ease-in-out infinite alternate;
+}
+@keyframes fireFlickerOuter {
+  0% { transform: scaleY(1) scaleX(1); }
+  50% { transform: scaleY(1.08) scaleX(0.96) skewX(1deg); }
+  100% { transform: scaleY(0.96) scaleX(1.04) skewX(-1deg); }
+}
+@keyframes fireFlickerInner {
+  0% { transform: scale(1); opacity: 0.9; }
+  100% { transform: scale(1.12) translateY(-1px); opacity: 1; }
+}
+
+/* 6. Луна (Сон) — мягкое мерцание кратеров */
+.anim-moon-glow {
+  animation: moonGlowPulse 4s ease-in-out infinite;
+}
+@keyframes moonGlowPulse {
+  0%, 100% { filter: drop-shadow(0 0 3px rgba(254, 240, 138, 0.4)); transform: rotate(0deg); }
+  50% { filter: drop-shadow(0 0 10px rgba(254, 240, 138, 0.8)); transform: rotate(-3deg); }
+}
+
+/* 7. Вода — реалистичное покачивание капли */
+.anim-drop-fluid {
+  transform-origin: 12px 18px;
+  animation: dropFluid 3.2s ease-in-out infinite;
+}
+@keyframes dropFluid {
+  0%, 100% { transform: scale(1); }
+  40% { transform: scaleY(1.06) scaleX(0.95); filter: drop-shadow(0 2px 6px rgba(6, 182, 212, 0.5)); }
+  70% { transform: scaleY(0.97) scaleX(1.03); }
+}
+
+/* 8. Пульсовые зоны (Карвонен) — радарная волна */
+.anim-radar-ping {
+  transform-origin: center center;
+  animation: radarPing 2.5s ease-out infinite;
+}
+@keyframes radarPing {
+  0% { r: 3; opacity: 0.9; }
+  70% { r: 9; opacity: 0.1; }
+  100% { r: 9; opacity: 0; }
+}
+
+/* 1. / Медленное вращение колеса пути (Философия) */
+@keyframes dharmaSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes dharmaPulse {
+  0%, 100% {
+    transform: scale(0.9);
+    filter: drop-shadow(0 0 3px #fde047);
+  }
+  50% {
+    transform: scale(1.15);
+    filter: drop-shadow(0 0 8px #fde047);
+  }
+}
+
+.anim-dharma-spin {
+  animation: dharmaSpin 24s linear infinite;
+  transform-origin: center;
+}
+
+.anim-dharma-core {
+  animation: dharmaPulse 3s ease-in-out infinite;
+  transform-origin: center;
+}
+
+
+
+/* 2. Книга: /* Эффект парения и живого свечения стопки книг (Библиотека) */
+@keyframes stackFloat {
+  0%, 100% {
+    transform: translateY(0);
+    filter: drop-shadow(0 2px 4px rgba(192, 132, 252, 0.2));
+  }
+  50% {
+    transform: translateY(-2.5px);
+    filter: drop-shadow(0 6px 10px rgba(192, 132, 252, 0.6));
+  }
+}
+
+.anim-stack-float {
+  animation: stackFloat 3.2s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
+/* 3. Пранаяма: ритмичное расширение волн праны из центра */
+@keyframes pranaExpand {
+  0% { transform: scale(0.85); opacity: 0.2; }
+  50% { transform: scale(1.15); opacity: 1; filter: drop-shadow(0 0 6px currentColor); }
+  100% { transform: scale(0.85); opacity: 0.2; }
+}
+.anim-prana-ring-1 { animation: pranaExpand 3s ease-in-out infinite; transform-origin: center; }
+.anim-prana-ring-2 { animation: pranaExpand 3s ease-in-out infinite 0.6s; transform-origin: center; }
+.anim-prana-core { animation: bookGlow 2s ease-in-out infinite; }
+
+/* 4. Асаны: /* Эффект живого дыхания и раскрытия лепестков Лотоса (Асаны) */
+/* 2. Асаны: Живой пульс биомеханики */
+@keyframes asanaFlex {
+  0%, 100% { transform: scale(0.96); opacity: 0.75; }
+  50% { transform: scale(1.04); opacity: 1; filter: drop-shadow(0 0 6px rgba(192, 132, 252, 0.6)); }
+}
+.anim-asana-pose { animation: asanaFlex 3s ease-in-out infinite; transform-origin: center; }
+
+/* 5. Шаткармы — реалистичные вертикальные волны */
+/* 1. Шаткармы: Энергичные перекаты волн + всплывающие пузырьки детокса */
+@keyframes shatWaveMove {
+  0%, 100% { transform: translateY(0) scaleX(1); }
+  50% { transform: translateY(-1.5px) scaleX(1.03); filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.9)); }
+}
+@keyframes bubbleRise {
+  0% { transform: translateY(4px) scale(0.6); opacity: 0; }
+  50% { opacity: 1; }
+  100% { transform: translateY(-6px) scale(1.2); opacity: 0; }
+}
+.anim-shat-wave-1 { animation: shatWaveMove 2.2s ease-in-out infinite; transform-origin: center; }
+.anim-shat-wave-2 { animation: shatWaveMove 2.2s ease-in-out infinite 0.3s; transform-origin: center; }
+.anim-bubble-1 { animation: bubbleRise 2s ease-in-out infinite; }
+.anim-bubble-2 { animation: bubbleRise 2.5s ease-in-out infinite 0.7s; }
+
+
+/* 6. Медитация: пульсация зрачка */
+@keyframes eyePulse {
+  0%, 100% { transform: scale(0.85); opacity: 0.6; }
+  50% { transform: scale(1.2); opacity: 1; filter: drop-shadow(0 0 7px currentColor); }
+}
+.anim-eye-pulse { animation: eyePulse 3s ease-in-out infinite; transform-origin: center; }
+
+/* Отключение для слабовидящих */
+[data-theme="accessible"] .app-icon *,
+body.theme-accessible .app-icon * {
+  animation: none !important;
+}
+
+/* 4. Лотос (Шапка / Кнопки): Распускание */
+@keyframes lotusBloom {
+  0%, 100% { transform: scale(0.92); opacity: 0.6; }
+  50% { transform: scale(1.08); opacity: 1; filter: drop-shadow(0 0 6px rgba(192, 132, 252, 0.7)); }
+}
+.anim-lotus-core { animation: lotusBloom 3.5s ease-in-out infinite; transform-origin: bottom center; }
+.anim-lotus-side-1 { animation: lotusBloom 3.5s ease-in-out infinite 0.5s; transform-origin: bottom center; }
+.anim-lotus-side-2 { animation: lotusBloom 3.5s ease-in-out infinite 1s; transform-origin: bottom center; }

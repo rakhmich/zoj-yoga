@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Физкультура, ЗОЖ и спорт</title>
+  
+  <!-- Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <!-- Стили приложения -->
+  <link rel="stylesheet" href="./src/styles/tokens.css">
+  <link rel="stylesheet" href="./src/styles/base.css">
+  <link rel="stylesheet" href="./src/styles/components.css">
+  <link rel="stylesheet" href="./src/styles/icons.css">
+  <link rel="stylesheet" href="./src/styles/yoga.css">
+
+  <style>
+    :root {
+      --bg-primary: var(--bg-main, #060913);
+    }
+    .view-screen:not(.active-screen) {
+      display: none !important;
+    }
+    .app-container {
+      padding-top: env(safe-area-inset-top, 0);
+      padding-bottom: calc(env(safe-area-inset-bottom, 0) + 24px);
+    }
+
+    /* БЛОК КНИГИ ИЗ ОРИГИНАЛЬНОЙ ВЕРСИИ */
+    .book-banner-card {
+      background: var(--bg-card, rgba(15, 23, 42, 0.75));
+      border: 1px solid var(--border-card, rgba(56, 189, 248, 0.25));
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-radius: var(--radius-lg, 20px);
+      padding: 16px;
+      margin-bottom: 16px;
+      box-sizing: border-box;
+    }
+    .book-banner-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .book-banner-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text-main, #f8fafc);
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+    .book-banner-badge {
+      font-size: 11px;
+      font-weight: 800;
+      color: #f43f5e;
+      border: 1px solid rgba(244, 63, 94, 0.45);
+      background: rgba(244, 63, 94, 0.12);
+      padding: 3px 8px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+    .book-banner-desc {
+      font-size: 13px;
+      color: var(--text-muted, #94a3b8);
+      line-height: 1.4;
+      margin-bottom: 12px;
+    }
+    .book-banner-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      background: #ffffff;
+      color: #0f172a;
+      font-weight: 800;
+      font-size: 14.5px;
+      padding: 11px 16px;
+      border-radius: 999px;
+      text-decoration: none;
+      box-sizing: border-box;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    }
+    .book-banner-btn:active {
+      transform: scale(0.98);
+      opacity: 0.9;
+    }
+    .book-banner-btn .elib-brand {
+      color: #ea580c;
+      font-weight: 900;
+    }
+    .book-banner-btn .elib-arrow {
+      color: #0284c7;
+      font-size: 16px;
+      font-weight: 900;
+    }
+  </style>
+</head>
+<body class="theme-dark">
+
+  <div class="app-container">
+
+    <!-- ШАПКА ПРИЛОЖЕНИЯ -->
+    <header class="app-header">
+      <div class="header-profile">
+        <div class="header-avatar" id="header-avatar"></div>
+        <div class="header-title-group">
+          <h1 class="header-title" id="header-title">Физкультура, ЗОЖ и спорт</h1>
+          <span class="header-author" id="header-author">Татьяна Львова</span>
+        </div>
+      </div>
+      <div class="header-controls">
+        <details class="theme-dropdown" id="theme-dropdown">
+          <summary class="theme-trigger">
+            <span id="theme-icon">🌙</span>
+          </summary>
+          <div class="theme-options">
+            <button type="button" class="theme-opt-btn" data-theme="dark">Тёмная 🌙</button>
+            <button type="button" class="theme-opt-btn" data-theme="light">Светлая ☀️</button>
+            <button type="button" class="theme-opt-btn" data-theme="accessible">Контраст 👁️</button>
+          </div>
+        </details>
+        <!-- Кнопка переключения режимов -->
+        <button type="button" class="btn-mode-toggle" id="btn-mode-toggle">
+          <span id="mode-toggle-icon"></span>
+          <span id="mode-toggle-text">Йога</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ССЫЛКИ НА КАНАЛЫ АВТОРА -->
+    <div class="channels-section-grid" style="padding: 0 14px;">
+      <div class="channels-title-col">
+        <span class="ch-lbl-line1">Каналы</span>
+        <span class="ch-lbl-line2">по этой теме:</span>
+      </div>
+      <div class="channels-right-row">
+        <a class="channel-chip ch-tg" href="https://t.me/tanyafizra" target="_blank" rel="noopener">
+          <span data-icon="telegram"></span> Telegram
+        </a>
+        <a class="channel-chip ch-yt" href="https://youtube.com/" target="_blank" rel="noopener">
+          <span data-icon="youtube"></span> YouTube
+        </a>
+        <a class="channel-chip ch-dz" href="https://dzen.ru/" target="_blank" rel="noopener">
+          <span data-icon="dzen"></span> Дзен
+        </a>
+      </div>
+    </div>
+
+    <!-- ЭКРАН 1: МОДУЛЬ ЗОЖ И ДИАГНОСТИКИ -->
+    <main id="screen-zoj" class="view-screen active-screen" style="padding: 0 14px;">
+      
+      <!-- ВОССТАНОВЛЕННЫЙ БЛОК КНИГИ ИЗ СТАРОЙ ВЕРСИИ -->
+      <div class="book-banner-card">
+        <div class="book-banner-header">
+          <span class="book-banner-title">МИР ГЛАЗАМИ ЙОГОВ</span>
+          <span class="book-banner-badge">МОЯ КНИГА</span>
+        </div>
+        <p class="book-banner-desc">Внешняя и внутренняя тратака. Упражнения для зрения</p>
+        <a class="book-banner-btn" href="https://www.elibrary.ru/item.asp?id=49472304" target="_blank" rel="noopener">
+          <span>Купить на <span class="elib-brand">eLIBRARY.RU</span></span>
+          <span class="elib-arrow">↗</span>
+        </a>
+      </div>
+
+      <div class="yoga-section-header">
+        <h2 class="yoga-main-title">Функциональная диагностика</h2>
+        <p class="yoga-main-subtitle">Экспресс-тесты физиологического состояния и калькуляторы ЗОЖ</p>
+      </div>
+
+      <!-- КАРТОЧКИ ТЕСТОВ ЗОЖ -->
+      <div class="yoga-modules-grid" id="zoj-cards-grid">
+        <div class="yoga-hub-card" data-action="bmi">
+          <div class="yoga-card-top-row">
+            <div class="yoga-card-icon" data-icon="bmi"></div>
+            <div class="yoga-card-title">ИМТ (Кетле)</div>
+          </div>
+          <div class="yoga-card-desc">Диагностика веса и шкала ВОЗ</div>
+        </div>
+
+        <div class="yoga-hub-card" data-action="bmr">
+          <div class="yoga-card-top-row">
+            <div class="yoga-card-icon" data-icon="bmr"></div>
+            <div class="yoga-card-title">Метаболизм (BMR)</div>
+          </div>
+          <div class="yoga-card-desc">Расход калорий и норма БЖУ</div>
+        </div>
+
+        <div class="yoga-hub-card" data-action="water">
+          <div class="yoga-card-top-row">
+            <div class="yoga-card-icon" data-icon="water"></div>
+            <div class="yoga-card-title">Норма воды</div>
+          </div>
+          <div class="yoga-card-desc">Гидратация с учетом нагрузок</div>
+        </div>
+
+        <div class="yoga-hub-card" data-action="kerdo">
+          <div class="yoga-card-top-row">
+            <div class="yoga-card-icon" data-icon="kerdo"></div>
+            <div class="yoga-card-title">Индекс Кердо</div>
+          </div>
+          <div class="yoga-card-desc">Баланс вегетативной системы</div>
+        </div>
+
+        <div class="yoga-hub-card" data-action="stange">
+          <div class="yoga-card-top-row">
+            <div class="yoga-card-icon" data-icon="stange"></div>
+            <div class="yoga-card-title">Штанге / Генч</div>
+          </div>
+          <div class="yoga-card-desc">Гипоксическая устойчивость</div>
+        </div>
+
+        <div class="yoga-hub-card" data-action="karvonen">
+          <div class="yoga-card-top-row">
+            <div class="yoga-card-icon" data-icon="karvonen"></div>
+            <div class="yoga-card-title">Зоны пульса</div>
+          </div>
+          <div class="yoga-card-desc">5 коридоров Карвонена</div>
+        </div>
+
+        <div class="yoga-hub-card" data-action="rufier">
+          <div class="yoga-card-top-row">
+            <div class="yoga-card-icon" data-icon="rufier"></div>
+            <div class="yoga-card-title">Проба Руфье</div>
+          </div>
+          <div class="yoga-card-desc">Работоспособность сердца</div>
+        </div>
+
+        <div class="yoga-hub-card" data-action="romberg">
+          <div class="yoga-card-top-row">
+            <div class="yoga-card-icon" data-icon="romberg"></div>
+            <div class="yoga-card-title">Проба Ромберга</div>
+          </div>
+          <div class="yoga-card-desc">Координация и баланс</div>
+        </div>
+
+        <div class="yoga-hub-card" data-action="kvas">
+          <div class="yoga-card-top-row">
+            <div class="yoga-card-icon" data-icon="kvas"></div>
+            <div class="yoga-card-title">Индекс Кваса</div>
+          </div>
+          <div class="yoga-card-desc">Коэффициент выносливости ССС</div>
+        </div>
+
+        <div class="yoga-hub-card" data-action="sleep">
+          <div class="yoga-card-top-row">
+            <div class="yoga-card-icon" data-icon="sleep"></div>
+            <div class="yoga-card-title">Циклы сна</div>
+          </div>
+          <div class="yoga-card-desc">Расчет фаз быстрого сна</div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ЭКРАН 2: МОДУЛЬ ЙОГИ -->
+    <main id="screen-yoga" class="view-screen" style="padding: 0 14px;">
+      <div class="yoga-section-header">
+        <h2 class="yoga-main-title">Пространство йоги</h2>
+        <p class="yoga-main-subtitle">Практики осознанности, асаны, дыхание и философия</p>
+      </div>
+
+      <!-- ХАБ КАРТОЧЕК ЙОГИ -->
+      <div class="yoga-modules-grid" id="yoga-hub-grid">
+        <div class="yoga-hub-card" data-yoga-subview="asanas">
+          <div class="yoga-card-top-row">
+            <div class="yoga-card-icon" data-icon="asanas"></div>
+            <div class="yoga-card-title">Асаны</div>
+          </div>
+          <div class="yoga-card-desc">Каталог и классификатор поз</div>
+        </div>
+
+        <div class="yoga-hub-card" data-yoga-subview="shatkarmas">
+          <div class="yoga-card-top-row">
+            <div class="yoga-card-icon" data-icon="shatkarmas"></div>
+            <div class="yoga-card-title">Шаткармы</div>
+          </div>
+          <div class="yoga-card-desc">6 очистительных практик</div>
+        </div>
+
+        <div class="yoga-hub-card" data-yoga-subview="pranayama">
+          <div class="yoga-card-top-row">
+            <div class="yoga-card-icon" data-icon="pranayama"></div>
+            <div class="yoga-card-title">Пранаяма</div>
+          </div>
+          <div class="yoga-card-desc">Интерактивный тренажер дыхания</div>
+        </div>
+
+        <div class="yoga-hub-card" data-yoga-subview="philosophy">
+          <div class="yoga-card-top-row">
+            <div class="yoga-card-icon" data-icon="philosophy"></div>
+            <div class="yoga-card-title">Философия</div>
+          </div>
+          <div class="yoga-card-desc">Ступени, Яма, Нияма и Гуны</div>
+        </div>
+
+        <div class="yoga-hub-card yoga-card-wide" data-yoga-subview="library">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="yoga-card-icon" data-icon="library"></div>
+            <div>
+              <div class="yoga-card-title" style="text-align: left;">Библиотека йоги</div>
+              <div class="yoga-card-desc" style="text-align: left;">Книги, трактаты и первоисточники</div>
+            </div>
+          </div>
+          <span class="yoga-card-badge-inline">Книги</span>
+        </div>
+      </div>
+
+      <!-- Контейнер для выбранного подраздела йоги -->
+      <div id="yoga-subview-container" style="display: none;"></div>
+    </main>
+
+    <!-- ЭКРАН 3: КАЛЬКУЛЯТОР / ТЕСТ ЗОЖ (БЕЗ ДУБЛИРУЮЩЕЙ КНОПКИ) -->
+    <main id="screen-calculator" class="view-screen" style="padding: 0 14px;">
+      <div id="calculator-content"></div>
+    </main>
+
+    <!-- МОДАЛЬНОЕ ОКНО АСАН -->
+    <div id="asana-modal" class="sheet-backdrop">
+      <div class="sheet-modal">
+        <div id="asana-modal-body"></div>
+      </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО STORIES -->
+    <div id="story-modal" class="story-modal">
+      <div class="story-modal-overlay" id="story-overlay"></div>
+      <div class="story-modal-box" id="story-box"></div>
+    </div>
+
+    <!-- КНОПКА «НАВЕРХ» -->
+    <button type="button" class="scroll-to-top-btn" id="scroll-to-top" aria-label="Наверх">↑</button>
+
+  </div>
+
+  <!-- ПОДКЛЮЧЕНИЕ СКРИПТОВ -->
+  <script src="./src/services/telegram.js"></script>
+  <script src="./src/services/storage.js"></script>
+  <script src="./src/services/audio.js"></script>
+
+  <!-- Реестр анимированных SVG-иконок -->
+  <script src="./icons.js"></script>
+
+  <!-- Базы данных -->
+<!-- Базы данных асан (Все 116 поз) -->
+  <script src="./src/data/asanas/standing.js"></script>
+  <script src="./src/data/asanas/sitting.js"></script>
+  <script src="./src/data/asanas/lying.js"></script>
+  <script src="./src/data/asanas/inverted.js"></script>
+  <script src="./src/data/asanas/arm-balances.js"></script>
+  <script src="./src/data/asanas/index.js"></script>
+
+  <!-- Контент тренировок и книг -->
+  <script src="./src/data/yoga-content.js"></script>
+  <script src="./src/data/fitness-content.js"></script>
+  <script src="./src/data/books-data.js"></script>
+
+  <!-- Модули тестов ЗОЖ -->
+  <script src="./src/modules/zoj/bmi.js"></script>
+  <script src="./src/modules/zoj/bmr.js"></script>
+  <script src="./src/modules/zoj/water.js"></script>
+  <script src="./src/modules/zoj/kerdo.js"></script>
+  <script src="./src/modules/zoj/stange.js"></script>
+  <script src="./src/modules/zoj/karvonen.js"></script>
+  <script src="./src/modules/zoj/rufier.js"></script>
+  <script src="./src/modules/zoj/romberg.js"></script>
+  <script src="./src/modules/zoj/kvas.js"></script>
+  <script src="./src/modules/zoj/sleep.js"></script>
+
+  <!-- Модули Йоги -->
+  <script src="./src/modules/yoga/asanas.js"></script>
+  <script src="./src/modules/yoga/shatkarmas.js"></script>
+  <script src="./src/modules/yoga/pranayama.js"></script>
+  <script src="./src/modules/yoga/philosophy.js"></script>
+  <script src="./src/modules/yoga/library.js"></script>
+
+  <!-- Генератор историй -->
+  <script src="./src/modules/story-generator.js"></script>
+
+  <!-- Маршрутизация и запуск приложения -->
+  <script src="./src/services/router.js"></script>
+  <script src="./src/main.js"></script>
+</body>
+</html>

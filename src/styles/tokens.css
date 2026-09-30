@@ -1,0 +1,212 @@
+/* ==========================================================================
+   ДИЗАЙН-ТОКЕНЫ: ФИЗКУЛЬТУРА / ЗОЖ И ЙОГА
+   Файл: src/styles/tokens.css
+   Поддерживает: Тёмная, Светлая, Доступная (А+) с увеличением шрифта
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. БАЗОВАЯ ТЁМНАЯ ТЕМА (Default: ЗОЖ / Физкультура)
+   -------------------------------------------------------------------------- */
+:root,
+body.theme-dark {
+  --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Базовый масштаб */
+  --font-scale: 1;
+
+  /* Фоны */
+  --bg-main: #060913;
+  --bg-card: rgba(15, 23, 42, 0.75);
+  --bg-card-hover: rgba(30, 41, 59, 0.85);
+  --bg-input: #0f172a;
+  --bg-modal: #0b1120;
+
+  /* Текст */
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+
+  /* Рамки и разделители */
+  --border-card: rgba(56, 189, 248, 0.2);
+  --border-input: #1e293b;
+  --border-focus: #38bdf8;
+
+  /* Акценты ЗОЖ (Неоново-голубой и мятный) */
+  --accent: #38bdf8;
+  --accent-hover: #0ea5e9;
+  --accent-glow: rgba(56, 189, 248, 0.25);
+  --accent-bg-subtle: rgba(56, 189, 248, 0.12);
+
+  /* Статусные цвета */
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+
+  /* Радиусы и тени */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-full: 9999px;
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* --------------------------------------------------------------------------
+   2. СВЕТЛАЯ ТЕМА (ЗОЖ / Физкультура)
+   -------------------------------------------------------------------------- */
+body.theme-light,
+[data-theme="light"] {
+  --bg-main: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f1f5f9;
+  --bg-input: #f8fafc;
+  --bg-modal: #ffffff;
+
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --text-dim: #64748b;
+
+  --border-card: #e2e8f0;
+  --border-input: #cbd5e1;
+  --border-focus: #0284c7;
+
+  --accent: #0284c7;
+  --accent-hover: #0369a1;
+  --accent-glow: rgba(2, 132, 199, 0.15);
+  --accent-bg-subtle: rgba(2, 132, 199, 0.08);
+
+  --shadow-card: 0 4px 16px rgba(15, 23, 42, 0.06);
+}
+
+/* --------------------------------------------------------------------------
+   3. ВЕРСИЯ ДЛЯ СЛАБОВИДЯЩИХ (А+) — Высокий контраст + Увеличенный кегль
+   -------------------------------------------------------------------------- */
+html:has(body.theme-accessible),
+html[data-theme="accessible"] {
+  font-size: 19px !important; /* Увеличение базового кегля со стандартных 16px до 19px */
+}
+
+body.theme-accessible,
+[data-theme="accessible"] {
+  --bg-main: #000000;
+  --bg-card: #0a0a0a;
+  --bg-card-hover: #181818;
+  --bg-input: #000000;
+  --bg-modal: #000000;
+
+  --text-main: #ffffff;
+  --text-muted: #f1f5f9;  /* Делаем второстепенный текст почти белым для контраста */
+  --text-dim: #cbd5e1;
+
+  /* Строгие толстые контрастные рамки */
+  --border-card: #ffffff;
+  --border-input: #ffffff;
+  --border-focus: #38bdf8;
+
+  --accent: #38bdf8;
+  --accent-hover: #7dd3fc;
+  --accent-glow: none;
+  --accent-bg-subtle: #171717;
+
+  --shadow-card: none;
+  
+  line-height: 1.55 !important;
+  letter-spacing: 0.02em !important;
+}
+
+/* Типографика и элементы под крупный размер в доступном режиме */
+body.theme-accessible .header-title,
+body.theme-accessible .yoga-main-title {
+  font-size: 22px !important;
+  font-weight: 900 !important;
+}
+
+body.theme-accessible .header-author {
+  font-size: 16px !important;
+}
+
+body.theme-accessible .yoga-card-title,
+body.theme-accessible .menu-card-title {
+  font-size: 18px !important;
+  font-weight: 800 !important;
+}
+
+body.theme-accessible .yoga-card-desc,
+body.theme-accessible .menu-card-desc,
+body.theme-accessible .yoga-main-subtitle {
+  font-size: 15px !important;
+  color: #ffffff !important;
+  line-height: 1.45 !important;
+}
+
+body.theme-accessible .btn-mode-toggle,
+body.theme-accessible .back-btn,
+body.theme-accessible button.calc-btn {
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  min-height: 50px !important;
+  border-width: 2px !important;
+}
+
+body.theme-accessible input,
+body.theme-accessible select {
+  font-size: 17px !important;
+  min-height: 50px !important;
+  border-width: 2px !important;
+  color: #ffffff !important;
+}
+
+body.theme-accessible label {
+  font-size: 16px !important;
+}
+
+body.theme-accessible .gender-btn {
+  font-size: 15px !important;
+  min-height: 44px !important;
+}
+
+body.theme-accessible .channel-chip {
+  font-size: 15px !important;
+  min-height: 46px !important;
+}
+
+/* ==========================================================================
+   АКЦЕНТНАЯ ВЕТКА ДЛЯ ЙОГИ (data-mode="yoga")
+   ========================================================================== */
+
+/* Йога: Тёмная тема */
+[data-mode="yoga"],
+body.mode-yoga,
+body.theme-dark[data-mode="yoga"],
+body.theme-dark.mode-yoga {
+  --accent: #c084fc;             /* Сиренево-лавандовый акцент */
+  --accent-hover: #a855f7;
+  --accent-glow: rgba(192, 132, 252, 0.25);
+  --accent-bg-subtle: rgba(192, 132, 252, 0.12);
+  --border-card: rgba(192, 132, 252, 0.22);
+  --border-focus: #c084fc;
+}
+
+/* Йога: Светлая тема */
+body.theme-light[data-mode="yoga"],
+body.theme-light.mode-yoga,
+[data-theme="light"][data-mode="yoga"] {
+  --accent: #7c3aed;             /* Глубокий фиолетовый */
+  --accent-hover: #6d28d9;
+  --accent-glow: rgba(124, 58, 237, 0.15);
+  --accent-bg-subtle: rgba(124, 58, 237, 0.08);
+  --border-card: #e9d5ff;
+  --border-focus: #7c3aed;
+}
+
+/* Йога: Тема для слабовидящих А+ (крупный контрастный аметистовый) */
+body.theme-accessible[data-mode="yoga"],
+body.theme-accessible.mode-yoga,
+[data-theme="accessible"][data-mode="yoga"] {
+  --accent: #d8b4fe;
+  --accent-hover: #f3e8ff;
+  --accent-glow: none;
+  --accent-bg-subtle: #171717;
+  --border-card: #ffffff;
+  --border-focus: #d8b4fe;
+}
