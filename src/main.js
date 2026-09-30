@@ -1,6 +1,7 @@
 /**
  * ГЛАВНАЯ ТОЧКА ВХОДА ПРИЛОЖЕНИЯ (Vanilla JS)
  * Файл: src/main.js
+ * Включает автоскролл к кнопке «Назад» и каскадное появление результатов тестов
  */
 
 (function () {
@@ -8,6 +9,146 @@
 
   var tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
 
+  // -------------------------------------------------------------
+  // 1. СТИЛИ КАСКАДНОЙ АНИМАЦИИ ВЫДАЧИ РЕЗУЛЬТАТОВ (БЕЗ ЗВУКА)
+  // -------------------------------------------------------------
+  function injectCascadeStyles() {
+    if (document.getElementById('cascade-results-style')) return;
+    var styleEl = document.createElement('style');
+    styleEl.id = 'cascade-results-style';
+    styleEl.textContent = `
+      /* Плавный контейнер результатов */
+      .cascade-reveal {
+        display: block !important;
+        opacity: 1 !important;
+        scroll-margin-top: 18px;
+      }
+
+      /* Поочередное каскадное проявление дочерних блоков */
+      .cascade-reveal > * {
+        opacity: 0;
+        transform: translateY(16px) scale(0.98);
+        filter: blur(3px);
+        animation: resultCascadeItem 0.42s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+
+      .cascade-reveal > *:nth-child(1) { animation-delay: 0.04s; } /* Главная цифра */
+      .cascade-reveal > *:nth-child(2) { animation-delay: 0.14s; } /* Статус бейдж */
+      .cascade-reveal > *:nth-child(3) { animation-delay: 0.24s; } /* Шкала / БЖУ / график */
+      .cascade-reveal > *:nth-child(4) { animation-delay: 0.34s; } /* Строки параметров */
+      .cascade-reveal > *:nth-child(5) { animation-delay: 0.44s; } /* Кнопка Stories */
+      .cascade-reveal > *:nth-child(n+6) { animation-delay: 0.54s; }
+
+      @keyframes resultCascadeItem {
+        from {
+          opacity: 0;
+          transform: translateY(18px) scale(0.97);
+          filter: blur(4px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+          filter: blur(0);
+        }
+      }
+
+      /* Мягкий акцент для числа */
+      .cascade-reveal .result-hero-num,
+      .cascade-reveal .result-value,
+      .cascade-reveal h2,
+      .cascade-reveal .hero-val {
+        animation: glowPopNumber 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+
+      @keyframes glowPopNumber {
+        0% { transform: scale(0.92); opacity: 0; }
+        60% { transform: scale(1.04); }
+        100% { transform: scale(1); opacity: 1; }
+      }
+    `;
+    document.head.appendChild(styleEl);
+  }
+
+  // -------------------------------------------------------------
+  // 2. УНИВЕРСАЛЬНЫЙ АВТОСКРОЛЛ К ШАПКЕ / КНОПКЕ «НАЗАД»
+  // -------------------------------------------------------------
+  function scrollToScreenHeader(container) {
+    if (!container) return;
+    setTimeout(function () {
+      var backBtn = container.querySelector(
+        '.btn-back, .back-btn, [data-back], [data-route-back], .calc-top-bar, .section-title-wrap, .sheet-header, h2, h3'
+      ) || container;
+
+      var rect = backBtn.getBoundingClientRect();
+      var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      // Оставляем комфортные 14px сверху экрана
+      var targetY = rect.top + scrollTop - 14;
+
+      window.scrollTo({
+        top: Math.max(0, targetY),
+        behavior: 'smooth'
+      });
+    }, 70);
+  }
+
+  // -------------------------------------------------------------
+  // 3. ПЛАВНЫЙ СПУСК И ЗАПУСК КАСКАДА ДЛЯ РЕЗУЛЬТАТОВ
+  // -------------------------------------------------------------
+  function showResultsWithCascade(resultsContainer) {
+    var container = typeof resultsContainer === 'string'
+      ? document.querySelector(resultsContainer)
+      : resultsContainer;
+
+    if (!container) return;
+
+    // Сброс и перезапуск каскада
+    container.classList.remove('cascade-reveal');
+    void container.offsetWidth; // force reflow
+    container.classList.add('cascade-reveal');
+
+    if (window.haptic) {
+      window.haptic('success');
+    }
+
+    // Мягкий спуск к карточке результата
+    setTimeout(function () {
+      container.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }, 90);
+  }
+
+  // Делегирование кликов по всем кнопкам «Рассчитать» / «Оценить»
+  function initCalculateButtonInterceptor() {
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('button, .btn, .btn-primary, [type="submit"]');
+      if (!btn) return;
+
+      var txt = (btn.textContent || '').trim().toLowerCase();
+      var isCalcBtn = txt.indexOf('рассчитать') !== -1 ||
+                      txt.indexOf('оценить') !== -1 ||
+                      txt.indexOf('расчет') !== -1 ||
+                      txt.indexOf('завершить') !== -1 ||
+                      btn.classList.contains('btn-calc');
+
+      if (isCalcBtn) {
+        var screen = btn.closest('.screen, .card, .calc-screen, .calculator-form, form') || 
+                     btn.parentElement.parentElement;
+
+        setTimeout(function () {
+          var results = screen.querySelector('.results, #results, .result-card, .test-results, [id*="result"]');
+          if (results) {
+            showResultsWithCascade(results);
+          }
+        }, 90);
+      }
+    });
+  }
+
+  // -------------------------------------------------------------
+  // 4. ТАКТИЛЬНОСТЬ, ТЕМЫ И КНОПКА НАВЕРХ
+  // -------------------------------------------------------------
   function initHapticEngine() {
     window.haptic = function (type) {
       type = type || 'light';
@@ -22,7 +163,7 @@
           }
         }
       } catch (e) {
-        console.warn('[Haptic] Ошибка вызова вибрации:', e);
+        console.warn('[Haptic] Ошибка вибрации:', e);
       }
     };
   }
@@ -67,7 +208,7 @@
   }
 
   function initScrollToTop() {
-    var btn = document.getElementById('scroll-to-top');
+    var btn = document.getElementById('scroll-to-top') || document.getElementById('scroll-to-top-btn');
     if (!btn) return;
 
     window.addEventListener('scroll', function () {
@@ -84,9 +225,9 @@
     });
   }
 
-  /**
-   * Менеджер монтирования калькуляторов и йоги
-   */
+  // -------------------------------------------------------------
+  // 5. МЕНЕДЖЕР МОНТИРОВАНИЯ КАЛЬКУЛЯТОРОВ И ЙОГИ
+  // -------------------------------------------------------------
   var AppManager = {
     renderCalculator: function (testId, container) {
       if (!container) return;
@@ -117,6 +258,9 @@
       if (window.initIcons) {
         window.initIcons(container);
       }
+
+      // ПЛАВНЫЙ СПУСК: Кнопка «Назад» встает строго под верхнюю границу экрана
+      scrollToScreenHeader(container);
     },
 
     renderYogaSubview: function (subviewId, container) {
@@ -180,17 +324,27 @@
       if (window.initIcons) {
         window.initIcons(container);
       }
+
+      // ПЛАВНЫЙ СПУСК: Кнопка «Назад» встает строго под верхнюю границу экрана
+      scrollToScreenHeader(container);
     }
   };
 
   window.App = AppManager;
+  window.scrollToScreenHeader = scrollToScreenHeader;
+  window.showResultsWithCascade = showResultsWithCascade;
 
+  // -------------------------------------------------------------
+  // 6. СТАРТ ПРИЛОЖЕНИЯ
+  // -------------------------------------------------------------
   function initApp() {
     console.log('[Fizra & Yoga] Инициализация ядра...');
 
+    injectCascadeStyles();
     initHapticEngine();
     initThemeEngine();
     initScrollToTop();
+    initCalculateButtonInterceptor();
 
     if (tg) {
       tg.ready();
@@ -200,7 +354,7 @@
       window.telegramService.init();
     }
 
-    // Регистрация всех связей в Router
+    // Регистрация маршрутов в Router
     if (window.Router) {
       var zojTests = ['bmi', 'bmr', 'water', 'kerdo', 'stange', 'karvonen', 'rufier', 'romberg', 'kvas', 'sleep'];
       zojTests.forEach(function (id) {
