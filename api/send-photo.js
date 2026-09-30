@@ -1,7 +1,7 @@
 /**
  * Serverless-функция отправки медиа (фото или видео) пользователю в Telegram
  * Файл: api/send-photo.js
- * Использует чистый CommonJS для Vercel Node.js
+ * Добавлена интерактивная кнопка-ссылка под медиафайлом
  */
 
 module.exports = async function handler(req, res) {
@@ -24,9 +24,21 @@ module.exports = async function handler(req, res) {
 
   const isVideo = type === 'video' || Boolean(video);
 
+  // Вирусная инлайн-кнопка для запуска Mini App (сохраняется даже при пересылке друзьям)
+  const inlineKeyboard = JSON.stringify({
+    inline_keyboard: [
+      [
+        {
+          text: '⚡ Проверить свои показатели',
+          url: 'https://t.me/zoj_tl_bot?start=calc'
+        }
+      ]
+    ]
+  });
+
   try {
     // =============================================================
-    // 1. ОТПРАВКА ВИДЕО (MP4 / WebM) ЧЕРЕЗ sendVideo
+    // 1. ОТПРАВКА ВИДЕО (MP4 / WebM)
     // =============================================================
     if (isVideo && video) {
       const base64Data = video.replace(/^data:[^;]+;base64,/, '');
@@ -41,6 +53,7 @@ module.exports = async function handler(req, res) {
         formData.append('parse_mode', 'HTML');
       }
       formData.append('supports_streaming', 'true');
+      formData.append('reply_markup', inlineKeyboard);
 
       let tgResponse = await fetch(`https://api.telegram.org/bot${botToken}/sendVideo`, {
         method: 'POST',
@@ -49,7 +62,7 @@ module.exports = async function handler(req, res) {
 
       let result = await tgResponse.json();
 
-      // Если Telegram отклонил кодек видео в sendVideo — отправляем надежным документом
+      // Фоллбэк: если Telegram отверг кодек sendVideo, шлём документом
       if (!result.ok && result.error_code !== 403) {
         console.warn('[send-photo] sendVideo error, fallback to sendDocument:', result.description);
         const docFormData = new FormData();
@@ -59,6 +72,8 @@ module.exports = async function handler(req, res) {
           docFormData.append('caption', caption);
           docFormData.append('parse_mode', 'HTML');
         }
+        docFormData.append('reply_markup', inlineKeyboard);
+
         const docResponse = await fetch(`https://api.telegram.org/bot${botToken}/sendDocument`, {
           method: 'POST',
           body: docFormData
@@ -85,7 +100,7 @@ module.exports = async function handler(req, res) {
     }
 
     // =============================================================
-    // 2. ОТПРАВКА ФОТО (PNG / JPEG) ЧЕРЕЗ sendPhoto
+    // 2. ОТПРАВКА ФОТО (PNG / JPEG)
     // =============================================================
     if (image || photo) {
       const base64Data = (image || photo).replace(/^data:image\/\w+;base64,/, '');
@@ -99,6 +114,7 @@ module.exports = async function handler(req, res) {
         formData.append('caption', caption);
         formData.append('parse_mode', 'HTML');
       }
+      formData.append('reply_markup', inlineKeyboard);
 
       const tgResponse = await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
         method: 'POST',
@@ -125,7 +141,7 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    return res.status(400).json({ error: 'No media content provided (expected image or video)' });
+    return res.status(400).json({ error: 'No media content provided' });
 
   } catch (error) {
     console.error('[send-photo] Server error:', error);
