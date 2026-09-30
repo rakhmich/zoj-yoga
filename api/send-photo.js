@@ -10,7 +10,7 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  const botToken = process.env.BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken) {
     return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN missing in environment variables' });
   }
